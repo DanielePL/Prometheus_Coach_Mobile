@@ -1,5 +1,6 @@
 package com.prometheuscoach.mobile.ui.screens.dashboard
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -9,6 +10,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -17,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -32,6 +35,10 @@ fun DashboardScreen(
     onNavigateToCalendar: () -> Unit,
     onNavigateToSettings: () -> Unit,
     onNavigateToClientDetail: (String) -> Unit,
+    onNavigateToWorkouts: () -> Unit = {},
+    onNavigateToLibrary: () -> Unit = {},
+    onNavigateToConversations: () -> Unit = {},
+    onNavigateToAddClient: () -> Unit = {},
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val dashboardState by viewModel.dashboardState.collectAsState()
@@ -65,35 +72,8 @@ fun DashboardScreen(
                     containerColor = MaterialTheme.colorScheme.background
                 )
             )
-        },
-        bottomBar = {
-            NavigationBar {
-                NavigationBarItem(
-                    selected = true,
-                    onClick = { },
-                    icon = { Icon(Icons.Filled.Home, contentDescription = null) },
-                    label = { Text("Home") }
-                )
-                NavigationBarItem(
-                    selected = false,
-                    onClick = onNavigateToClients,
-                    icon = { Icon(Icons.Outlined.People, contentDescription = null) },
-                    label = { Text("Clients") }
-                )
-                NavigationBarItem(
-                    selected = false,
-                    onClick = onNavigateToCalendar,
-                    icon = { Icon(Icons.Outlined.CalendarMonth, contentDescription = null) },
-                    label = { Text("Calendar") }
-                )
-                NavigationBarItem(
-                    selected = false,
-                    onClick = { },
-                    icon = { Icon(Icons.Outlined.FitnessCenter, contentDescription = null) },
-                    label = { Text("Routines") }
-                )
-            }
         }
+        // Bottom bar is now handled by CoachBottomBar in MainScreen
     ) { paddingValues ->
         PullToRefreshBox(
             isRefreshing = isRefreshing,
@@ -142,9 +122,9 @@ fun DashboardScreen(
                         StatCard(
                             title = "Messages",
                             value = dashboardState.pendingMessages.toString(),
-                            icon = Icons.Default.Message,
+                            icon = Icons.AutoMirrored.Filled.Message,
                             modifier = Modifier.weight(1f),
-                            onClick = { }
+                            onClick = onNavigateToConversations
                         )
                     }
                 }
@@ -167,14 +147,14 @@ fun DashboardScreen(
                             QuickActionChip(
                                 text = "Add Client",
                                 icon = Icons.Default.PersonAdd,
-                                onClick = { }
+                                onClick = onNavigateToAddClient
                             )
                         }
                         item {
                             QuickActionChip(
-                                text = "New Routine",
+                                text = "New Workout",
                                 icon = Icons.Default.Add,
-                                onClick = { }
+                                onClick = onNavigateToWorkouts
                             )
                         }
                         item {
@@ -261,8 +241,9 @@ private fun StatCard(
         modifier = modifier.clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+            containerColor = Color.Black
+        ),
+        border = BorderStroke(1.dp, PrometheusOrange)
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -278,12 +259,13 @@ private fun StatCard(
             Text(
                 value,
                 style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = Color.White
             )
             Text(
                 title,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = Color.White.copy(alpha = 0.7f)
             )
         }
     }
@@ -320,7 +302,11 @@ private fun ClientListItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.Black
+        ),
+        border = BorderStroke(1.dp, PrometheusOrange)
     ) {
         Row(
             modifier = Modifier
@@ -346,7 +332,7 @@ private fun ClientListItem(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = client.fullName?.firstOrNull()?.uppercase() ?: "?",
+                        text = client.fullName.firstOrNull()?.uppercase() ?: "?",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = PrometheusOrange
@@ -358,21 +344,22 @@ private fun ClientListItem(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    client.fullName ?: "Unknown",
+                    client.fullName,
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    color = Color.White
                 )
                 Text(
-                    client.email ?: "",
+                    "Client",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = Color.White.copy(alpha = 0.7f)
                 )
             }
 
             Icon(
                 Icons.Default.ChevronRight,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                tint = PrometheusOrange
             )
         }
     }

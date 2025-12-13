@@ -15,7 +15,11 @@ import javax.inject.Inject
 data class ClientsState(
     val isLoading: Boolean = true,
     val clients: List<Client> = emptyList(),
-    val error: String? = null
+    val error: String? = null,
+    val isInviting: Boolean = false,
+    val inviteError: String? = null,
+    val inviteSuccess: Boolean = false,
+    val coachInviteCode: String? = null
 )
 
 @HiltViewModel
@@ -52,5 +56,44 @@ class ClientsViewModel @Inject constructor(
                     }
                 }
         }
+    }
+
+    fun inviteClientByEmail(email: String) {
+        viewModelScope.launch {
+            _clientsState.update { it.copy(isInviting = true, inviteError = null, inviteSuccess = false) }
+
+            clientRepository.inviteClientByEmail(email)
+                .onSuccess {
+                    _clientsState.update {
+                        it.copy(
+                            isInviting = false,
+                            inviteSuccess = true
+                        )
+                    }
+                    // Reload clients to show any changes
+                    loadClients()
+                }
+                .onFailure { exception ->
+                    _clientsState.update {
+                        it.copy(
+                            isInviting = false,
+                            inviteError = exception.message
+                        )
+                    }
+                }
+        }
+    }
+
+    fun loadCoachInviteCode() {
+        viewModelScope.launch {
+            clientRepository.getCoachInviteCode()
+                .onSuccess { code ->
+                    _clientsState.update { it.copy(coachInviteCode = code) }
+                }
+        }
+    }
+
+    fun clearInviteState() {
+        _clientsState.update { it.copy(inviteError = null, inviteSuccess = false) }
     }
 }

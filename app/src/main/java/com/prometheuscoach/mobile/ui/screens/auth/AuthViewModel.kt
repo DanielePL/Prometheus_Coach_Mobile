@@ -119,4 +119,10 @@ class AuthViewModel @Inject constructor(
                 }
         }
     }
+
+    fun handleAuthCallback(uri: String) {
+        viewModelScope.launch {
+            authRepository.handleAuthCallback(uri)
+        }
+    }
 }

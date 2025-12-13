@@ -1,5 +1,6 @@
 package com.prometheuscoach.mobile.ui.screens.auth
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -25,6 +27,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.prometheuscoach.mobile.R
 import com.prometheuscoach.mobile.ui.theme.PrometheusOrange
 
 @Composable
@@ -64,13 +67,14 @@ fun AuthScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Logo / Title
-            Text(
-                text = "🔥",
-                style = MaterialTheme.typography.displayLarge
+            // Prometheus Logo
+            Image(
+                painter = painterResource(id = R.drawable.ic_prometheus_logo),
+                contentDescription = "Prometheus Logo",
+                modifier = Modifier.size(120.dp)
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             Text(
                 text = "Prometheus Coach",

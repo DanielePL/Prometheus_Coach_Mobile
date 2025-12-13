@@ -1,0 +1,29 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="100dp"
+    android:height="100dp"
+    android:viewportWidth="500"
+    android:viewportHeight="500">
+
+    <!-- Left flame -->
+    <path
+        android:fillColor="#F57C20"
+        android:pathData="M145,450
+                         C80,400 50,320 70,240
+                         C90,160 140,100 180,50
+                         C200,80 210,120 200,170
+                         C190,220 160,270 150,320
+                         C140,370 150,420 180,450
+                         C160,455 150,455 145,450
+                         Z"/>
+
+    <!-- Right flame/drop -->
+    <path
+        android:fillColor="#F57C20"
+        android:pathData="M280,450
+                         C230,420 220,360 240,300
+                         C260,240 310,200 350,180
+                         C380,220 400,270 400,330
+                         C400,390 370,440 320,460
+                         C300,465 285,460 280,450
+                         Z"/>
+</vector>

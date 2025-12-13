@@ -2,15 +2,17 @@ package com.prometheuscoach.mobile.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Prometheus Brand Colors - matching the web app
-val PrometheusOrange = Color(0xFFFF6B35)
-val PrometheusOrangeLight = Color(0xFFFF8A5B)
-val PrometheusOrangeDark = Color(0xFFE55A2B)
+// Prometheus Brand Colors - matching the Client Mobile App
+val PrometheusOrange = Color(0xFFE67E22)          // Sattes Orange (Primary)
+val PrometheusOrangeLight = Color(0xFFF39C12)     // Heller für Hover/Active States
+val PrometheusOrangeDark = Color(0xFFD35400)      // Dunkler für Kontrast/Pressed States
+val PrometheusOrangeGlow = Color(0xFFE67E22)      // Gleich wie Primary für konsistenten Glow
 
-// Dark Theme Colors
-val DarkBackground = Color(0xFF0F0F0F)
-val DarkSurface = Color(0xFF1A1A1A)
-val DarkSurfaceVariant = Color(0xFF2A2A2A)
+// Dark Theme Colors - matching Client Mobile App
+val DarkBackground = Color(0xFF1A1512)            // Warmer dunkler Hintergrund
+val DarkBackgroundSecondary = Color(0xFF141414)   // Sekundärer Hintergrund
+val DarkSurface = Color(0xFF1E1A17)               // Leicht wärmer als Background
+val DarkSurfaceVariant = Color(0xFF2A2623)        // Warme Surface Variante
 val DarkOnBackground = Color(0xFFE5E5E5)
 val DarkOnSurface = Color(0xFFE5E5E5)
 
