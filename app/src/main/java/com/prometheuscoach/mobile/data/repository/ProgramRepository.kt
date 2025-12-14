@@ -339,7 +339,7 @@ class ProgramRepository @Inject constructor(
                     mapOf(
                         "program_id" to programId,
                         "coach_id" to coachId,
-                        "client_id" to clientId,
+                        "user_id" to clientId,
                         "start_date" to startDate
                     )
                 ) {

@@ -186,7 +186,7 @@ class ClientRepository @Inject constructor(
                 .select {
                     filter {
                         eq("coach_id", coachId)
-                        eq("client_id", client.id)
+                        eq("user_id", client.id)
                     }
                 }
                 .decodeList<CoachClientConnection>()
@@ -206,7 +206,7 @@ class ClientRepository @Inject constructor(
                 .insert(
                     mapOf(
                         "coach_id" to coachId,
-                        "client_id" to client.id,
+                        "user_id" to client.id,
                         "status" to ConnectionStatus.PENDING.value,
                         "requested_at" to java.time.Instant.now().toString()
                     )

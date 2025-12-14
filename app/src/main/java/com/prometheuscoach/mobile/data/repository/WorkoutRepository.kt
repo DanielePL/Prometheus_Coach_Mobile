@@ -511,7 +511,7 @@ class WorkoutRepository @Inject constructor(
                 .from("routine_assignments")
                 .select {
                     filter {
-                        eq("client_id", clientId)
+                        eq("user_id", clientId)
                         eq("coach_id", coachId)
                     }
                     order("assigned_at", Order.DESCENDING)
