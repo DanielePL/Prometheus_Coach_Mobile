@@ -24,6 +24,7 @@ import com.prometheuscoach.mobile.ui.screens.auth.EmailVerifiedScreen
 import com.prometheuscoach.mobile.ui.screens.calendar.CalendarScreen
 import com.prometheuscoach.mobile.ui.screens.community.CommunityScreen
 import com.prometheuscoach.mobile.ui.screens.community.CreatePostScreen
+import com.prometheuscoach.mobile.ui.screens.community.PostDetailScreen
 import com.prometheuscoach.mobile.ui.screens.chat.ChatScreen
 import com.prometheuscoach.mobile.ui.screens.chat.ConversationsScreen
 import com.prometheuscoach.mobile.ui.screens.clients.ClientDetailScreen
@@ -153,6 +154,17 @@ fun PrometheusNavHost(
                 onNavigateBack = { navController.popBackStack() },
                 onPostCreated = {
                     navController.popBackStack()
+                }
+            )
+        }
+
+        composable<NavRoute.PostDetail> { backStackEntry ->
+            val route: NavRoute.PostDetail = backStackEntry.toRoute()
+            PostDetailScreen(
+                postId = route.postId,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToUserProfile = { userId ->
+                    navController.navigate(NavRoute.UserProfile(userId))
                 }
             )
         }

@@ -95,3 +95,19 @@ enum class ConnectionStatus(val value: String) {
     ACCEPTED("accepted"),
     DECLINED("declined")
 }
+
+/**
+ * Coach profile model for invite code functionality.
+ * Maps to the profiles table with coach-specific fields.
+ */
+@Serializable
+data class CoachProfile(
+    val id: String,
+    @SerialName("full_name")
+    val fullName: String? = null,
+    @SerialName("avatar_url")
+    val avatarUrl: String? = null,
+    @SerialName("invite_code")
+    val inviteCode: String? = null,
+    val role: String? = null
+)

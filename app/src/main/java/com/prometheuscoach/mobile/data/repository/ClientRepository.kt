@@ -1,8 +1,10 @@
 package com.prometheuscoach.mobile.data.repository
 
+import android.util.Log
 import com.prometheuscoach.mobile.data.model.Client
 import com.prometheuscoach.mobile.data.model.CoachClientConnection
 import com.prometheuscoach.mobile.data.model.CoachClientView
+import com.prometheuscoach.mobile.data.model.CoachProfile
 import com.prometheuscoach.mobile.data.model.ConnectionStatus
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
@@ -220,17 +222,102 @@ class ClientRepository @Inject constructor(
 
     /**
      * Get coach's invite code for sharing.
-     * Clients can use this code to request connection.
+     * Retrieves existing code from profiles table, or generates and saves a new one.
+     * Clients can use this code to connect with the coach.
      */
     suspend fun getCoachInviteCode(): Result<String> {
         return try {
             val coachId = authRepository.getCurrentUserId()
                 ?: return Result.failure(Exception("Not authenticated"))
 
-            // For now, use the coach ID as invite code
-            // In production, you'd want a separate shorter code
-            Result.success(coachId.take(8).uppercase())
+            // Try to get existing invite code from profile
+            val profile = supabaseClient.postgrest
+                .from("profiles")
+                .select {
+                    filter { eq("id", coachId) }
+                }
+                .decodeSingleOrNull<CoachProfile>()
+
+            // If profile has an invite code, return it
+            if (!profile?.inviteCode.isNullOrBlank()) {
+                Log.d("ClientRepository", "Using existing invite code: ${profile?.inviteCode}")
+                return Result.success(profile!!.inviteCode!!)
+            }
+
+            // Generate a new unique invite code (6 alphanumeric characters)
+            val newCode = generateUniqueInviteCode()
+            Log.d("ClientRepository", "Generated new invite code: $newCode")
+
+            // Save the new invite code to the profile
+            supabaseClient.postgrest
+                .from("profiles")
+                .update(mapOf("invite_code" to newCode)) {
+                    filter { eq("id", coachId) }
+                }
+
+            Result.success(newCode)
         } catch (e: Exception) {
+            Log.e("ClientRepository", "Failed to get/create invite code", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Generate a unique 6-character alphanumeric invite code.
+     * Format: XXXXXX (e.g., "A3B7X9")
+     */
+    private suspend fun generateUniqueInviteCode(): String {
+        val chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789" // Excluding confusing chars: 0, O, I, 1
+        var attempts = 0
+        val maxAttempts = 10
+
+        while (attempts < maxAttempts) {
+            val code = (1..6)
+                .map { chars.random() }
+                .joinToString("")
+
+            // Check if code already exists
+            val existing = supabaseClient.postgrest
+                .from("profiles")
+                .select {
+                    filter { eq("invite_code", code) }
+                }
+                .decodeList<CoachProfile>()
+
+            if (existing.isEmpty()) {
+                return code
+            }
+
+            attempts++
+        }
+
+        // Fallback: use timestamp-based code if all attempts fail
+        return System.currentTimeMillis().toString(36).takeLast(6).uppercase()
+    }
+
+    /**
+     * Look up a coach by their invite code.
+     * Used by clients to find and connect with coaches.
+     */
+    suspend fun findCoachByInviteCode(inviteCode: String): Result<CoachProfile> {
+        return try {
+            val coaches = supabaseClient.postgrest
+                .from("profiles")
+                .select {
+                    filter {
+                        eq("invite_code", inviteCode.uppercase().trim())
+                        eq("role", "coach")
+                    }
+                }
+                .decodeList<CoachProfile>()
+
+            if (coaches.isEmpty()) {
+                return Result.failure(Exception("No coach found with this code"))
+            }
+
+            Result.success(coaches.first())
+        } catch (e: Exception) {
+            Log.e("ClientRepository", "Failed to find coach by invite code", e)
             Result.failure(e)
         }
     }
