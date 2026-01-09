@@ -3,11 +3,27 @@ package com.prometheuscoach.mobile.data.model
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+// ==================== TECHNIQUE GUIDE MODELS ====================
+
 /**
- * Base Routine entity from public.routines table.
+ * Technique guide section from exercise_technique_guides table.
+ * Matches the JSONB structure: {"title": "...", "bullets": ["...", "..."]}
  */
 @Serializable
-data class Routine(
+data class TechniqueSection(
+    @SerialName("title")
+    val title: String = "",
+    @SerialName("bullets")
+    val bullets: List<String> = emptyList()
+)
+
+// ==================== WORKOUT MODELS ====================
+
+/**
+ * Base Workout entity from public.workouts table.
+ */
+@Serializable
+data class Workout(
     val id: String,
     @SerialName("coach_id")
     val coachId: String,
@@ -20,7 +36,7 @@ data class Routine(
 )
 
 /**
- * Exercise entity from public.exercises_new table.
+ * Exercise entity from public.exercise_view (joins exercises_new with technique_guides).
  * Matches the schema used by the client mobile app.
  */
 @Serializable
@@ -48,15 +64,26 @@ data class Exercise(
     val trackWeight: Boolean = true,
     @SerialName("track_rpe")
     val trackRpe: Boolean = false,
+    @SerialName("track_duration")
+    val trackDuration: Boolean = false,
+    @SerialName("track_distance")
+    val trackDistance: Boolean = false,
     @SerialName("video_url")
     val videoUrl: String? = null,
     val tutorial: String? = null,
     val notes: String? = null,
     @SerialName("vbt_enabled")
     val vbtEnabled: Boolean = false,
+    @SerialName("supports_power_score")
+    val supportsPowerScore: Boolean = false,
+    @SerialName("supports_technique_score")
+    val supportsTechniqueScore: Boolean = false,
     val sports: List<String>? = null,
     @SerialName("created_at")
-    val createdAt: String? = null
+    val createdAt: String? = null,
+    // Technique guide sections from exercise_view join
+    @SerialName("technique_sections")
+    val techniqueSections: List<TechniqueSection>? = null
 )
 
 /**
@@ -70,8 +97,26 @@ data class ExerciseListItem(
     val category: String? = null,
     @SerialName("main_muscle_group")
     val mainMuscleGroup: String? = null,
+    @SerialName("secondary_muscle_groups")
+    val secondaryMuscleGroups: List<String>? = null,
     val equipment: List<String>? = null,
-    val sports: List<String>? = null
+    val sports: List<String>? = null,
+    @SerialName("track_reps")
+    val trackReps: Boolean = true,
+    @SerialName("track_weight")
+    val trackWeight: Boolean = true,
+    @SerialName("track_duration")
+    val trackDuration: Boolean = false,
+    @SerialName("track_distance")
+    val trackDistance: Boolean = false,
+    @SerialName("track_rpe")
+    val trackRpe: Boolean = false,
+    @SerialName("vbt_enabled")
+    val vbtEnabled: Boolean = false,
+    @SerialName("supports_power_score")
+    val supportsPowerScore: Boolean = false,
+    @SerialName("supports_technique_score")
+    val supportsTechniqueScore: Boolean = false
 ) {
     /** Display name for UI */
     val title: String get() = name
@@ -81,60 +126,52 @@ data class ExerciseListItem(
 }
 
 /**
- * Routine exercise from public.routine_exercises table.
+ * Workout exercise from public.workout_exercises table.
  */
 @Serializable
-data class RoutineExercise(
+data class WorkoutExercise(
     val id: String,
-    @SerialName("routine_id")
-    val routineId: String,
+    @SerialName("workout_id")
+    val workoutId: String,
     @SerialName("exercise_id")
     val exerciseId: String,
     @SerialName("order_index")
     val orderIndex: Int,
     val sets: Int = 3,
-    @SerialName("reps_min")
-    val repsMin: Int? = null,
-    @SerialName("reps_max")
-    val repsMax: Int? = null,
-    @SerialName("rest_seconds")
-    val restSeconds: Int = 90,
+    @SerialName("target_reps")
+    val targetReps: Int? = null,
     val notes: String? = null,
     @SerialName("created_at")
     val createdAt: String? = null
 )
 
 /**
- * Combined view from public.coach_routines_v.
- * Contains routine + exercise details in one row per exercise.
+ * Combined view from public.coach_workouts_v.
+ * Contains workout + exercise details in one row per exercise.
  */
 @Serializable
-data class CoachRoutineViewRow(
-    @SerialName("routine_id")
-    val routineId: String,
+data class CoachWorkoutViewRow(
+    @SerialName("workout_id")
+    val workoutId: String,
     @SerialName("coach_id")
     val coachId: String,
-    @SerialName("routine_name")
-    val routineName: String,
-    @SerialName("routine_description")
-    val routineDescription: String? = null,
-    @SerialName("routine_created_at")
-    val routineCreatedAt: String,
-    @SerialName("routine_updated_at")
-    val routineUpdatedAt: String,
-    @SerialName("routine_exercise_id")
-    val routineExerciseId: String? = null,
+    @SerialName("workout_name")
+    val workoutName: String,
+    @SerialName("workout_description")
+    val workoutDescription: String? = null,
+    @SerialName("workout_created_at")
+    val workoutCreatedAt: String,
+    @SerialName("workout_updated_at")
+    val workoutUpdatedAt: String,
+    @SerialName("workout_exercise_id")
+    val workoutExerciseId: String? = null,
     @SerialName("order_index")
     val orderIndex: Int? = null,
     val sets: Int? = null,
-    @SerialName("reps_min")
-    val repsMin: Int? = null,
-    @SerialName("reps_max")
-    val repsMax: Int? = null,
-    @SerialName("rest_seconds")
-    val restSeconds: Int? = null,
-    @SerialName("routine_exercise_notes")
-    val routineExerciseNotes: String? = null,
+    @SerialName("target_reps")
+    val targetReps: Int? = null,
+    @SerialName("workout_exercise_notes")
+    val workoutExerciseNotes: String? = null,
     @SerialName("exercise_id")
     val exerciseId: String? = null,
     @SerialName("exercise_title")
@@ -152,29 +189,27 @@ data class CoachRoutineViewRow(
 )
 
 /**
- * UI model for a routine with its exercises.
+ * UI model for a workout with its exercises.
  */
-data class RoutineWithExercises(
+data class WorkoutWithExercises(
     val id: String,
     val coachId: String,
     val name: String,
     val description: String?,
     val createdAt: String,
     val updatedAt: String,
-    val exercises: List<RoutineExerciseDetail>
+    val exercises: List<WorkoutExerciseDetail>
 )
 
 /**
- * UI model for an exercise within a routine.
+ * UI model for an exercise within a workout.
  */
-data class RoutineExerciseDetail(
-    val routineExerciseId: String,
+data class WorkoutExerciseDetail(
+    val workoutExerciseId: String,
     val exerciseId: String,
     val orderIndex: Int,
     val sets: Int,
-    val repsMin: Int?,
-    val repsMax: Int?,
-    val restSeconds: Int,
+    val targetReps: Int?,
     val notes: String?,
     val exerciseTitle: String,
     val exerciseCategory: String?,
@@ -184,31 +219,16 @@ data class RoutineExerciseDetail(
     val secondaryMuscles: String?
 ) {
     /**
-     * Format reps as "min-max" or just "min" if equal/null.
+     * Format reps display.
      */
     val repsDisplay: String
-        get() = when {
-            repsMin == null && repsMax == null -> "-"
-            repsMin == repsMax || repsMax == null -> "$repsMin"
-            repsMin == null -> "$repsMax"
-            else -> "$repsMin-$repsMax"
-        }
-
-    /**
-     * Format rest as "Xs" or "Xm Ys".
-     */
-    val restDisplay: String
-        get() = when {
-            restSeconds < 60 -> "${restSeconds}s"
-            restSeconds % 60 == 0 -> "${restSeconds / 60}m"
-            else -> "${restSeconds / 60}m ${restSeconds % 60}s"
-        }
+        get() = targetReps?.toString() ?: "-"
 }
 
 /**
- * Summary model for routine list (header only).
+ * Summary model for workout list (header only).
  */
-data class RoutineSummary(
+data class WorkoutSummary(
     val id: String,
     val name: String,
     val description: String?,
@@ -218,10 +238,10 @@ data class RoutineSummary(
 )
 
 /**
- * Request model for creating a routine.
+ * Request model for creating a workout.
  */
 @Serializable
-data class CreateRoutineRequest(
+data class CreateWorkoutRequest(
     @SerialName("coach_id")
     val coachId: String,
     val name: String,
@@ -229,32 +249,28 @@ data class CreateRoutineRequest(
 )
 
 /**
- * Request model for updating a routine.
+ * Request model for updating a workout.
  */
 @Serializable
-data class UpdateRoutineRequest(
+data class UpdateWorkoutRequest(
     val name: String,
     val description: String? = null
 )
 
 /**
- * Request model for adding an exercise to a routine.
+ * Request model for adding an exercise to a workout.
  */
 @Serializable
-data class AddRoutineExerciseRequest(
-    @SerialName("routine_id")
-    val routineId: String,
+data class AddWorkoutExerciseRequest(
+    @SerialName("workout_id")
+    val workoutId: String,
     @SerialName("exercise_id")
     val exerciseId: String,
     @SerialName("order_index")
     val orderIndex: Int,
     val sets: Int = 3,
-    @SerialName("reps_min")
-    val repsMin: Int? = null,
-    @SerialName("reps_max")
-    val repsMax: Int? = null,
-    @SerialName("rest_seconds")
-    val restSeconds: Int = 90,
+    @SerialName("target_reps")
+    val targetReps: Int? = null,
     val notes: String? = null
 )
 
@@ -267,20 +283,23 @@ data class UpdateOrderRequest(
     val orderIndex: Int
 )
 
-// ==================== ROUTINE ASSIGNMENT MODELS ====================
+// ==================== WORKOUT ASSIGNMENT MODELS ====================
+// Note: WorkoutTemplate is defined in Template.kt
 
 /**
- * Routine assignment entity from public.routine_assignments table.
+ * Workout assignment entity from public.workout_assignments table.
  * Represents a workout assigned to a client by a coach.
+ *
+ * Note: DB uses 'workout_template_id' and 'client_id' column names.
  */
 @Serializable
-data class RoutineAssignment(
+data class WorkoutAssignment(
     val id: String,
-    @SerialName("routine_id")
-    val routineId: String,
+    @SerialName("workout_template_id")
+    val workoutId: String,
     @SerialName("coach_id")
     val coachId: String,
-    @SerialName("user_id")
+    @SerialName("client_id")
     val clientId: String,
     @SerialName("assigned_at")
     val assignedAt: String,
@@ -291,15 +310,15 @@ data class RoutineAssignment(
 )
 
 /**
- * Request model for assigning a routine to a client.
+ * Request model for assigning a workout to a client.
  */
 @Serializable
-data class AssignRoutineRequest(
-    @SerialName("routine_id")
-    val routineId: String,
+data class AssignWorkoutRequest(
+    @SerialName("workout_template_id")
+    val workoutId: String,
     @SerialName("coach_id")
     val coachId: String,
-    @SerialName("user_id")
+    @SerialName("client_id")
     val clientId: String,
     @SerialName("scheduled_date")
     val scheduledDate: String? = null,
@@ -307,16 +326,56 @@ data class AssignRoutineRequest(
 )
 
 /**
- * UI model for displaying an assigned workout with routine details.
+ * Request model for updating an assignment.
+ */
+@Serializable
+data class UpdateAssignmentRequest(
+    val notes: String? = null,
+    @SerialName("scheduled_date")
+    val scheduledDate: String? = null,
+    val status: String? = null
+)
+
+/**
+ * UI model for displaying an assigned workout with workout details.
  */
 data class AssignedWorkout(
     val assignmentId: String,
-    val routineId: String,
-    val routineName: String,
-    val routineDescription: String?,
+    val workoutId: String,
+    val workoutName: String,
+    val workoutDescription: String?,
     val exerciseCount: Int,
     val assignedAt: String,
     val scheduledDate: String?,
     val notes: String?,
-    val status: String
+    val status: String,
+    val exercises: List<AssignedExerciseInfo> = emptyList()
+)
+
+/**
+ * Exercise info for assigned workout display (V1 compatible).
+ * Contains full set details from exercise_sets table.
+ */
+data class AssignedExerciseInfo(
+    val workoutExerciseId: String,
+    val exerciseId: String,
+    val name: String,
+    val muscleGroup: String?,
+    val equipment: String?,
+    val orderIndex: Int,
+    val sets: List<ExerciseSetInfo> = emptyList()
+) {
+    val setCount: Int get() = sets.size
+    val totalReps: Int get() = sets.sumOf { it.targetReps }
+}
+
+/**
+ * Set details from exercise_sets table (V1 compatible).
+ */
+data class ExerciseSetInfo(
+    val id: String,
+    val setNumber: Int,
+    val targetReps: Int,
+    val targetWeight: Double,
+    val restSeconds: Int
 )

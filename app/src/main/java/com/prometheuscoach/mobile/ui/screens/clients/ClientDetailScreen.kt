@@ -2,6 +2,8 @@ package com.prometheuscoach.mobile.ui.screens.clients
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -17,13 +19,20 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import android.util.Log
 import androidx.hilt.navigation.compose.hiltViewModel
-import coil.compose.AsyncImage
+import coil.compose.AsyncImagePainter
+import coil.compose.SubcomposeAsyncImage
+import coil.compose.SubcomposeAsyncImageContent
 import com.prometheuscoach.mobile.data.model.AssignedWorkout
-import com.prometheuscoach.mobile.ui.theme.PrometheusOrange
+import com.prometheuscoach.mobile.ui.components.GlowAvatarLarge
+import com.prometheuscoach.mobile.ui.components.GradientBackground
+import com.prometheuscoach.mobile.ui.theme.*
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -33,37 +42,64 @@ fun ClientDetailScreen(
     onNavigateBack: () -> Unit,
     onNavigateToChat: (String) -> Unit = {},
     onNavigateToWorkouts: () -> Unit = {},
+    onNavigateToWorkoutDetail: (workoutId: String) -> Unit = {},
     onNavigateToProgress: () -> Unit = {},
     onNavigateToNutrition: (clientId: String, clientName: String) -> Unit = { _, _ -> },
+    onNavigateToVBT: (clientId: String, clientName: String) -> Unit = { _, _ -> },
+    onNavigateToFormAnalysis: (clientId: String, clientName: String) -> Unit = { _, _ -> },
+    onNavigateToAI: (clientId: String, clientName: String) -> Unit = { _, _ -> },
+    onNavigateToGamification: (clientId: String, clientName: String) -> Unit = { _, _ -> },
     viewModel: ClientDetailViewModel = hiltViewModel()
 ) {
     val detailState by viewModel.detailState.collectAsState()
     val scope = rememberCoroutineScope()
     var showAssignWorkoutSheet by remember { mutableStateOf(false) }
+    var showEditSheet by remember { mutableStateOf(false) }
+    var showEditAssignmentSheet by remember { mutableStateOf(false) }
+    var selectedAssignment by remember { mutableStateOf<AssignedWorkout?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(clientId) {
         viewModel.loadClient(clientId)
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Client Details") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { /* Edit */ }) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit")
-                    }
-                }
-            )
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
-    ) { paddingValues ->
+    GradientBackground {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            "Client Details",
+                            color = TextPrimary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = TextPrimary
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { showEditSheet = true }) {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = "Edit",
+                                tint = PrometheusOrange
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent
+                    )
+                )
+            },
+            snackbarHost = { SnackbarHost(snackbarHostState) }
+        ) { paddingValues ->
         when {
             detailState.isLoading -> {
                 Box(
@@ -111,49 +147,31 @@ fun ClientDetailScreen(
                         .padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Avatar
-                    if (client.avatarUrl != null) {
-                        AsyncImage(
-                            model = client.avatarUrl,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(120.dp)
-                                .clip(CircleShape)
-                        )
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .size(120.dp)
-                                .clip(CircleShape)
-                                .background(PrometheusOrange.copy(alpha = 0.2f)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = client.fullName.firstOrNull()?.uppercase() ?: "?",
-                                style = MaterialTheme.typography.displayMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = PrometheusOrange
-                            )
-                        }
-                    }
+                    // Avatar with glow ring
+                    Log.d("ClientDetail", "Client ${client.fullName} avatarUrl: ${client.avatarUrl}")
+                    GlowAvatarLarge(
+                        avatarUrl = client.avatarUrl,
+                        name = client.fullName
+                    )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
                         client.fullName,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
                     )
 
                     Text(
                         "Client",
                         style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = TextSecondary
                     )
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // Quick Actions
+                    // Quick Actions - First Row
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly
@@ -172,9 +190,9 @@ fun ClientDetailScreen(
                             onClick = onNavigateToProgress
                         )
                         QuickActionButton(
-                            icon = Icons.Default.Restaurant,
-                            label = "Nutrition",
-                            onClick = { onNavigateToNutrition(clientId, client.fullName) }
+                            icon = Icons.Default.Speed,
+                            label = "VBT",
+                            onClick = { onNavigateToVBT(clientId, client.fullName) }
                         )
                         QuickActionButton(
                             icon = Icons.AutoMirrored.Filled.Message,
@@ -190,16 +208,52 @@ fun ClientDetailScreen(
                         )
                     }
 
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Quick Actions - Second Row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        QuickActionButton(
+                            icon = Icons.Default.Restaurant,
+                            label = "Nutrition",
+                            onClick = { onNavigateToNutrition(clientId, client.fullName) }
+                        )
+                        QuickActionButton(
+                            icon = Icons.Default.VideoLibrary,
+                            label = "Form",
+                            onClick = { onNavigateToFormAnalysis(clientId, client.fullName) }
+                        )
+                        QuickActionButton(
+                            icon = Icons.Default.AutoAwesome,
+                            label = "AI",
+                            onClick = { onNavigateToAI(clientId, client.fullName) }
+                        )
+                        QuickActionButton(
+                            icon = Icons.Default.EmojiEvents,
+                            label = "Stats",
+                            onClick = { onNavigateToGamification(clientId, client.fullName) }
+                        )
+                    }
+
                     Spacer(modifier = Modifier.height(24.dp))
 
                     // Assigned Workouts Section
                     Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .shadow(
+                                elevation = 12.dp,
+                                shape = RoundedCornerShape(16.dp),
+                                ambientColor = PrometheusOrange.copy(alpha = 0.1f),
+                                spotColor = PrometheusOrange.copy(alpha = 0.15f)
+                            ),
+                        shape = RoundedCornerShape(16.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = Color.Black
+                            containerColor = DarkSurface.copy(alpha = 0.85f)
                         ),
-                        border = BorderStroke(1.dp, PrometheusOrange)
+                        border = BorderStroke(1.dp, PrometheusOrange.copy(alpha = 0.5f))
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Row(
@@ -258,6 +312,10 @@ fun ClientDetailScreen(
                                 detailState.assignedWorkouts.forEach { assignment ->
                                     AssignedWorkoutCard(
                                         assignment = assignment,
+                                        onClick = {
+                                            selectedAssignment = assignment
+                                            showEditAssignmentSheet = true
+                                        },
                                         onRemove = {
                                             scope.launch {
                                                 viewModel.removeAssignment(assignment.assignmentId)
@@ -277,12 +335,19 @@ fun ClientDetailScreen(
 
                     // Info Cards
                     Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .shadow(
+                                elevation = 12.dp,
+                                shape = RoundedCornerShape(16.dp),
+                                ambientColor = PrometheusOrange.copy(alpha = 0.1f),
+                                spotColor = PrometheusOrange.copy(alpha = 0.15f)
+                            ),
+                        shape = RoundedCornerShape(16.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = Color.Black
+                            containerColor = DarkSurface.copy(alpha = 0.85f)
                         ),
-                        border = BorderStroke(1.dp, PrometheusOrange)
+                        border = BorderStroke(1.dp, PrometheusOrange.copy(alpha = 0.5f))
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(
@@ -325,7 +390,67 @@ fun ClientDetailScreen(
                         onCreateWorkout = onNavigateToWorkouts
                     )
                 }
+
+                // Edit Client Sheet
+                if (showEditSheet) {
+                    EditClientSheet(
+                        clientName = client.fullName,
+                        currentTimezone = client.preferredTimezone,
+                        isSaving = detailState.isSavingClient,
+                        error = detailState.clientSaveError,
+                        onDismiss = {
+                            showEditSheet = false
+                            viewModel.clearClientSaveError()
+                        },
+                        onSave = { name, timezone ->
+                            scope.launch {
+                                viewModel.updateClient(name, timezone)
+                                // Wait for save to complete and close if successful
+                                kotlinx.coroutines.delay(500)
+                                if (detailState.clientSaveError == null && !detailState.isSavingClient) {
+                                    showEditSheet = false
+                                    snackbarHostState.showSnackbar("Client updated successfully")
+                                }
+                            }
+                        }
+                    )
+                }
+
+                // Edit Assignment Sheet
+                if (showEditAssignmentSheet && selectedAssignment != null) {
+                    EditAssignedWorkoutSheet(
+                        assignment = selectedAssignment!!,
+                        isUpdating = detailState.isUpdatingAssignment,
+                        error = detailState.assignmentUpdateError,
+                        onDismiss = {
+                            showEditAssignmentSheet = false
+                            selectedAssignment = null
+                            viewModel.clearAssignmentUpdateError()
+                        },
+                        onSave = { notes, scheduledDate, status, exerciseSets ->
+                            scope.launch {
+                                viewModel.updateAssignmentWithSets(
+                                    assignmentId = selectedAssignment!!.assignmentId,
+                                    notes = notes,
+                                    scheduledDate = scheduledDate,
+                                    status = status,
+                                    exerciseSets = exerciseSets
+                                ).onSuccess {
+                                    showEditAssignmentSheet = false
+                                    selectedAssignment = null
+                                    snackbarHostState.showSnackbar("Workout updated successfully")
+                                }
+                            }
+                        },
+                        onEditWorkout = { workoutId ->
+                            showEditAssignmentSheet = false
+                            selectedAssignment = null
+                            onNavigateToWorkoutDetail(workoutId)
+                        }
+                    )
+                }
             }
+        }
         }
     }
 }
@@ -339,17 +464,45 @@ private fun QuickActionButton(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        FilledTonalIconButton(
-            onClick = onClick,
-            modifier = Modifier.size(56.dp)
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .shadow(
+                    elevation = 8.dp,
+                    shape = CircleShape,
+                    ambientColor = PrometheusOrange.copy(alpha = 0.3f),
+                    spotColor = PrometheusOrange.copy(alpha = 0.3f)
+                )
+                .clip(CircleShape)
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            DarkSurfaceVariant,
+                            DarkSurface
+                        )
+                    )
+                )
+                .border(
+                    width = 1.dp,
+                    color = PrometheusOrange.copy(alpha = 0.3f),
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
         ) {
-            Icon(icon, contentDescription = null)
+            IconButton(onClick = onClick) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = PrometheusOrange
+                )
+            }
         }
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         Text(
             label,
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            fontWeight = FontWeight.Medium,
+            color = TextSecondary
         )
     }
 }
@@ -379,12 +532,27 @@ private fun InfoRow(label: String, value: String) {
 @Composable
 private fun AssignedWorkoutCard(
     assignment: AssignedWorkout,
+    onClick: () -> Unit,
     onRemove: () -> Unit
 ) {
     var showDeleteConfirm by remember { mutableStateOf(false) }
 
+    // Status colors
+    val statusColor = when (assignment.status) {
+        "completed" -> Color(0xFF4CAF50) // Green
+        "cancelled" -> Color.Gray
+        else -> PrometheusOrange // active
+    }
+    val statusText = when (assignment.status) {
+        "completed" -> "Completed"
+        "cancelled" -> "Cancelled"
+        else -> "Active"
+    }
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(
             containerColor = PrometheusOrange.copy(alpha = 0.1f)
@@ -408,12 +576,33 @@ private fun AssignedWorkoutCard(
             Spacer(modifier = Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = assignment.routineName,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.White
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = assignment.workoutName,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                        color = Color.White,
+                        modifier = Modifier.weight(1f)
+                    )
+                    // Status Badge
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = statusColor.copy(alpha = 0.2f),
+                        border = BorderStroke(1.dp, statusColor.copy(alpha = 0.5f))
+                    ) {
+                        Text(
+                            text = statusText,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = statusColor,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(4.dp))
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -456,7 +645,7 @@ private fun AssignedWorkoutCard(
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
             title = { Text("Remove Workout") },
-            text = { Text("Remove \"${assignment.routineName}\" from this client?") },
+            text = { Text("Remove \"${assignment.workoutName}\" from this client?") },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -475,3 +664,5 @@ private fun AssignedWorkoutCard(
         )
     }
 }
+
+// Avatar component moved to GlowAvatar.kt in ui/components

@@ -4,7 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.prometheuscoach.mobile.data.model.AssignedWorkout
 import com.prometheuscoach.mobile.data.model.Client
-import com.prometheuscoach.mobile.data.model.RoutineSummary
+import com.prometheuscoach.mobile.data.model.UpdateClientRequest
+import com.prometheuscoach.mobile.data.model.WorkoutSummary
 import com.prometheuscoach.mobile.data.repository.ChatRepository
 import com.prometheuscoach.mobile.data.repository.ClientRepository
 import com.prometheuscoach.mobile.data.repository.WorkoutRepository
@@ -21,11 +22,17 @@ data class ClientDetailState(
     val client: Client? = null,
     val error: String? = null,
     // Workout assignment state
-    val availableWorkouts: List<RoutineSummary> = emptyList(),
+    val availableWorkouts: List<WorkoutSummary> = emptyList(),
     val assignedWorkouts: List<AssignedWorkout> = emptyList(),
     val isLoadingWorkouts: Boolean = false,
     val isAssigning: Boolean = false,
-    val workoutsError: String? = null
+    val workoutsError: String? = null,
+    // Client edit state
+    val isSavingClient: Boolean = false,
+    val clientSaveError: String? = null,
+    // Assignment edit state
+    val isUpdatingAssignment: Boolean = false,
+    val assignmentUpdateError: String? = null
 )
 
 @HiltViewModel
@@ -88,7 +95,7 @@ class ClientDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _detailState.update { it.copy(isLoadingWorkouts = true, workoutsError = null) }
 
-            workoutRepository.getRoutines()
+            workoutRepository.getWorkouts()
                 .onSuccess { workouts ->
                     _detailState.update {
                         it.copy(
@@ -120,7 +127,7 @@ class ClientDetailViewModel @Inject constructor(
         _detailState.update { it.copy(isAssigning = true) }
 
         return workoutRepository.assignWorkoutToClient(
-            routineId = workoutId,
+            workoutId = workoutId,
             clientId = clientId,
             notes = notes
         ).map {
@@ -151,5 +158,147 @@ class ClientDetailViewModel @Inject constructor(
      */
     suspend fun startConversation(clientId: String): Result<String> {
         return chatRepository.findOrCreateConversation(clientId)
+    }
+
+    /**
+     * Update client profile data.
+     * @param name New client name
+     * @param timezone New timezone (optional)
+     * @return Result indicating success or failure
+     */
+    fun updateClient(name: String, timezone: String?): Result<Unit> {
+        val clientId = currentClientId ?: return Result.failure(Exception("No client selected"))
+
+        viewModelScope.launch {
+            _detailState.update { it.copy(isSavingClient = true, clientSaveError = null) }
+
+            val request = UpdateClientRequest(
+                fullName = name,
+                preferredTimezone = timezone
+            )
+
+            clientRepository.updateClient(clientId, request)
+                .onSuccess {
+                    // Reload client data to reflect changes
+                    loadClient(clientId)
+                    _detailState.update { it.copy(isSavingClient = false) }
+                }
+                .onFailure { exception ->
+                    _detailState.update {
+                        it.copy(
+                            isSavingClient = false,
+                            clientSaveError = exception.message ?: "Failed to update client"
+                        )
+                    }
+                }
+        }
+
+        return Result.success(Unit)
+    }
+
+    /**
+     * Clear client save error.
+     */
+    fun clearClientSaveError() {
+        _detailState.update { it.copy(clientSaveError = null) }
+    }
+
+    /**
+     * Update an assignment (notes, scheduled date, status) and exercise sets.
+     *
+     * @param assignmentId The assignment ID
+     * @param notes Optional notes for the client
+     * @param scheduledDate Optional scheduled date (YYYY-MM-DD)
+     * @param status Assignment status (active, completed, cancelled)
+     * @param exerciseSets Map of workoutExerciseId to list of EditableSetInfo
+     */
+    suspend fun updateAssignmentWithSets(
+        assignmentId: String,
+        notes: String?,
+        scheduledDate: String?,
+        status: String?,
+        exerciseSets: Map<String, List<EditableSetInfo>>
+    ): Result<Unit> {
+        val clientId = currentClientId ?: return Result.failure(Exception("No client selected"))
+
+        _detailState.update { it.copy(isUpdatingAssignment = true, assignmentUpdateError = null) }
+
+        try {
+            // First update the assignment metadata
+            workoutRepository.updateAssignment(
+                assignmentId = assignmentId,
+                notes = notes,
+                scheduledDate = scheduledDate,
+                status = status
+            ).getOrThrow()
+
+            // Then update each exercise's sets
+            for ((workoutExerciseId, sets) in exerciseSets) {
+                val setUpdates = sets.map { set ->
+                    WorkoutRepository.ExerciseSetUpdate(
+                        id = set.id,
+                        setNumber = set.setNumber,
+                        targetReps = set.targetReps,
+                        targetWeight = set.targetWeight,
+                        restSeconds = set.restSeconds
+                    )
+                }
+                workoutRepository.updateExerciseSets(workoutExerciseId, setUpdates).getOrThrow()
+            }
+
+            // Reload to reflect changes
+            loadAssignedWorkouts(clientId)
+            _detailState.update { it.copy(isUpdatingAssignment = false) }
+            return Result.success(Unit)
+        } catch (e: Exception) {
+            _detailState.update {
+                it.copy(
+                    isUpdatingAssignment = false,
+                    assignmentUpdateError = e.message ?: "Failed to update assignment"
+                )
+            }
+            return Result.failure(e)
+        }
+    }
+
+    /**
+     * Update an assignment (notes, scheduled date, status).
+     * @deprecated Use updateAssignmentWithSets for full editing support
+     */
+    suspend fun updateAssignment(
+        assignmentId: String,
+        notes: String?,
+        scheduledDate: String?,
+        status: String?
+    ): Result<Unit> {
+        val clientId = currentClientId ?: return Result.failure(Exception("No client selected"))
+
+        _detailState.update { it.copy(isUpdatingAssignment = true, assignmentUpdateError = null) }
+
+        return workoutRepository.updateAssignment(
+            assignmentId = assignmentId,
+            notes = notes,
+            scheduledDate = scheduledDate,
+            status = status
+        ).also { result ->
+            result.onSuccess {
+                loadAssignedWorkouts(clientId)
+                _detailState.update { it.copy(isUpdatingAssignment = false) }
+            }.onFailure { exception ->
+                _detailState.update {
+                    it.copy(
+                        isUpdatingAssignment = false,
+                        assignmentUpdateError = exception.message ?: "Failed to update assignment"
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * Clear assignment update error.
+     */
+    fun clearAssignmentUpdateError() {
+        _detailState.update { it.copy(assignmentUpdateError = null) }
     }
 }
