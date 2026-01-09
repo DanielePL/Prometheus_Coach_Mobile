@@ -625,8 +625,10 @@ private fun SetEditRow(
             onValueChange = { newValue ->
                 val filtered = newValue.filter { it.isDigit() }
                 repsText = filtered
-                val reps = filtered.toIntOrNull() ?: 0
-                onSetChange(set.copy(targetReps = reps))
+                // Only update model when there's a valid number - empty field stays empty
+                filtered.toIntOrNull()?.let { reps ->
+                    onSetChange(set.copy(targetReps = reps))
+                }
             },
             modifier = Modifier
                 .weight(1f)
@@ -651,8 +653,10 @@ private fun SetEditRow(
             onValueChange = { newValue ->
                 val filtered = newValue.filter { it.isDigit() || it == '.' }
                 weightText = filtered
-                val weight = filtered.toDoubleOrNull() ?: 0.0
-                onSetChange(set.copy(targetWeight = weight))
+                // Only update model when there's a valid number - empty field stays empty
+                filtered.toDoubleOrNull()?.let { weight ->
+                    onSetChange(set.copy(targetWeight = weight))
+                }
             },
             modifier = Modifier
                 .weight(1f)
