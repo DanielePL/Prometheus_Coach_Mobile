@@ -69,11 +69,11 @@ fun EditAssignedWorkoutSheet(
     var selectedStatus by remember(assignment) { mutableStateOf(assignment.status) }
     var showStatusMenu by remember { mutableStateOf(false) }
 
-    // Editable sets state - keyed by workoutExerciseId
-    val editableSets = remember(assignment) {
-        mutableStateMapOf<String, MutableList<EditableSetInfo>>().apply {
-            assignment.exercises.forEach { exercise ->
-                this[exercise.workoutExerciseId] = exercise.sets.map { set ->
+    // Editable sets state - use a single map that we replace entirely to trigger recomposition
+    var editableSetsMap by remember(assignment) {
+        mutableStateOf(
+            assignment.exercises.associate { exercise ->
+                exercise.workoutExerciseId to exercise.sets.map { set ->
                     EditableSetInfo(
                         id = set.id,
                         setNumber = set.setNumber,
@@ -81,7 +81,45 @@ fun EditAssignedWorkoutSheet(
                         targetWeight = set.targetWeight,
                         restSeconds = set.restSeconds
                     )
-                }.toMutableList()
+                }
+            }
+        )
+    }
+
+    // Helper functions to modify sets
+    fun updateSet(exerciseId: String, index: Int, updatedSet: EditableSetInfo) {
+        editableSetsMap = editableSetsMap.toMutableMap().apply {
+            this[exerciseId] = this[exerciseId]?.toMutableList()?.apply {
+                if (index < size) this[index] = updatedSet
+            } ?: emptyList()
+        }
+    }
+
+    fun addSet(exerciseId: String) {
+        editableSetsMap = editableSetsMap.toMutableMap().apply {
+            val currentList = this[exerciseId] ?: emptyList()
+            val lastSet = currentList.lastOrNull()
+            val newSet = EditableSetInfo(
+                id = "new_${System.currentTimeMillis()}",
+                setNumber = currentList.size + 1,
+                targetReps = lastSet?.targetReps ?: 10,
+                targetWeight = lastSet?.targetWeight ?: 0.0,
+                restSeconds = lastSet?.restSeconds ?: 90,
+                isNew = true
+            )
+            this[exerciseId] = currentList + newSet
+        }
+    }
+
+    fun removeSet(exerciseId: String, index: Int) {
+        editableSetsMap = editableSetsMap.toMutableMap().apply {
+            val currentList = this[exerciseId]?.toMutableList() ?: return@apply
+            if (currentList.size > 1 && index < currentList.size) {
+                currentList.removeAt(index)
+                // Renumber sets
+                this[exerciseId] = currentList.mapIndexed { i, set ->
+                    set.copy(setNumber = i + 1)
+                }
             }
         }
     }
@@ -89,7 +127,7 @@ fun EditAssignedWorkoutSheet(
     // Track expanded exercises
     var expandedExerciseId by remember { mutableStateOf<String?>(null) }
 
-    val totalSets = editableSets.values.sumOf { it.size }
+    val totalSets = editableSetsMap.values.sumOf { it.size }
     val statusColors = mapOf(
         "active" to orangePrimary,
         "completed" to Color(0xFF4CAF50),
@@ -211,7 +249,7 @@ fun EditAssignedWorkoutSheet(
 
                     // Exercise Cards with edit mode
                     items(assignment.exercises.sortedBy { it.orderIndex }) { exercise ->
-                        val sets = editableSets[exercise.workoutExerciseId] ?: mutableListOf()
+                        val sets = editableSetsMap[exercise.workoutExerciseId] ?: emptyList()
                         val isExpanded = expandedExerciseId == exercise.workoutExerciseId
 
                         EditableExerciseCard(
@@ -222,38 +260,13 @@ fun EditAssignedWorkoutSheet(
                                 expandedExerciseId = if (isExpanded) null else exercise.workoutExerciseId
                             },
                             onSetChange = { index, updatedSet ->
-                                editableSets[exercise.workoutExerciseId]?.let { list ->
-                                    if (index < list.size) {
-                                        list[index] = updatedSet
-                                    }
-                                }
+                                updateSet(exercise.workoutExerciseId, index, updatedSet)
                             },
                             onAddSet = {
-                                editableSets[exercise.workoutExerciseId]?.let { list ->
-                                    val lastSet = list.lastOrNull()
-                                    val newSetNumber = (lastSet?.setNumber ?: 0) + 1
-                                    list.add(
-                                        EditableSetInfo(
-                                            id = "new_${System.currentTimeMillis()}",
-                                            setNumber = newSetNumber,
-                                            targetReps = lastSet?.targetReps ?: 10,
-                                            targetWeight = lastSet?.targetWeight ?: 0.0,
-                                            restSeconds = lastSet?.restSeconds ?: 90,
-                                            isNew = true
-                                        )
-                                    )
-                                }
+                                addSet(exercise.workoutExerciseId)
                             },
                             onRemoveSet = { index ->
-                                editableSets[exercise.workoutExerciseId]?.let { list ->
-                                    if (list.size > 1 && index < list.size) {
-                                        list.removeAt(index)
-                                        // Renumber sets
-                                        list.forEachIndexed { i, set ->
-                                            list[i] = set.copy(setNumber = i + 1)
-                                        }
-                                    }
-                                }
+                                removeSet(exercise.workoutExerciseId, index)
                             }
                         )
                     }
@@ -409,7 +422,7 @@ fun EditAssignedWorkoutSheet(
                                 notes.takeIf { it.isNotBlank() },
                                 scheduledDate.takeIf { it.isNotBlank() },
                                 selectedStatus,
-                                editableSets.mapValues { it.value.toList() }
+                                editableSetsMap
                             )
                         },
                         modifier = Modifier
