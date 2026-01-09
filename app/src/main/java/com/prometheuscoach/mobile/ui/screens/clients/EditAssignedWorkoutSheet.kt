@@ -584,6 +584,14 @@ private fun SetEditRow(
     onSetChange: (EditableSetInfo) -> Unit,
     onRemove: (() -> Unit)?
 ) {
+    // Local state for text fields to allow intermediate editing
+    var repsText by remember(set.id, set.targetReps) {
+        mutableStateOf(set.targetReps.toString())
+    }
+    var weightText by remember(set.id, set.targetWeight) {
+        mutableStateOf(if (set.targetWeight > 0) formatWeight(set.targetWeight) else "")
+    }
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -599,27 +607,55 @@ private fun SetEditRow(
         )
 
         // Reps input
-        CompactNumberField(
-            value = set.targetReps.toString(),
-            onValueChange = { value ->
-                value.toIntOrNull()?.let { reps ->
-                    onSetChange(set.copy(targetReps = reps))
-                }
+        OutlinedTextField(
+            value = repsText,
+            onValueChange = { newValue ->
+                val filtered = newValue.filter { it.isDigit() }
+                repsText = filtered
+                val reps = filtered.toIntOrNull() ?: 0
+                onSetChange(set.copy(targetReps = reps))
             },
-            label = "Reps",
-            modifier = Modifier.weight(1f)
+            modifier = Modifier
+                .weight(1f)
+                .height(56.dp),
+            label = { Text("Reps", fontSize = 10.sp) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = orangePrimary,
+                unfocusedBorderColor = textGray.copy(alpha = 0.3f),
+                focusedTextColor = textWhite,
+                unfocusedTextColor = textWhite,
+                focusedLabelColor = orangePrimary,
+                unfocusedLabelColor = textGray
+            ),
+            textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp)
         )
 
         // Weight input
-        CompactNumberField(
-            value = if (set.targetWeight > 0) formatWeight(set.targetWeight) else "",
-            onValueChange = { value ->
-                val weight = value.toDoubleOrNull() ?: 0.0
+        OutlinedTextField(
+            value = weightText,
+            onValueChange = { newValue ->
+                val filtered = newValue.filter { it.isDigit() || it == '.' }
+                weightText = filtered
+                val weight = filtered.toDoubleOrNull() ?: 0.0
                 onSetChange(set.copy(targetWeight = weight))
             },
-            label = "kg",
-            modifier = Modifier.weight(1f),
-            allowDecimal = true
+            modifier = Modifier
+                .weight(1f)
+                .height(56.dp),
+            label = { Text("kg", fontSize = 10.sp) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = orangePrimary,
+                unfocusedBorderColor = textGray.copy(alpha = 0.3f),
+                focusedTextColor = textWhite,
+                unfocusedTextColor = textWhite,
+                focusedLabelColor = orangePrimary,
+                unfocusedLabelColor = textGray
+            ),
+            textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp)
         )
 
         // Remove button
