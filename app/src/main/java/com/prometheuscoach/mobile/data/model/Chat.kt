@@ -44,8 +44,34 @@ data class Message(
     @SerialName("edited_at")
     val editedAt: String? = null,
     @SerialName("read_at")
-    val readAt: String? = null
+    val readAt: String? = null,
+    // Attachment fields (V1 compatible: file_* column names)
+    @SerialName("file_url")
+    val fileUrl: String? = null,
+    @SerialName("file_type")
+    val fileType: String? = null,  // "image", "document", "voice"
+    @SerialName("file_name")
+    val fileName: String? = null
 )
+
+/**
+ * Attachment types for messages.
+ */
+enum class AttachmentType(val value: String) {
+    IMAGE("image"),
+    DOCUMENT("document"),
+    VOICE("voice");
+
+    companion object {
+        fun fromMimeType(mimeType: String): AttachmentType {
+            return when {
+                mimeType.startsWith("image/") -> IMAGE
+                mimeType.startsWith("audio/") -> VOICE
+                else -> DOCUMENT
+            }
+        }
+    }
+}
 
 /**
  * Response from get_other_participant RPC.
@@ -85,5 +111,11 @@ data class MessageWithSender(
     val content: String,
     val createdAt: String,
     val isFromCurrentUser: Boolean,
-    val isRead: Boolean
-)
+    val isRead: Boolean,
+    // Attachment fields (V1 compatible naming)
+    val fileUrl: String? = null,
+    val fileType: AttachmentType? = null,
+    val fileName: String? = null
+) {
+    val hasAttachment: Boolean get() = fileUrl != null
+}

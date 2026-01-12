@@ -5,6 +5,8 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.serialization)
+    id("com.google.gms.google-services")
+    id("com.google.firebase.appdistribution")
 }
 
 android {
@@ -33,9 +35,21 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Subscription check enabled in production
+            buildConfigField("Boolean", "BYPASS_SUBSCRIPTION", "false")
+            firebaseAppDistribution {
+                releaseNotes = "Release build"
+                testers = ""
+            }
         }
         debug {
             isMinifyEnabled = false
+            // Bypass subscription check for testers in debug builds
+            buildConfigField("Boolean", "BYPASS_SUBSCRIPTION", "true")
+            firebaseAppDistribution {
+                releaseNotes = "Debug build"
+                testers = ""
+            }
         }
     }
 
@@ -85,7 +99,11 @@ dependencies {
     implementation(libs.supabase.auth)
     implementation(libs.supabase.realtime)
     implementation(libs.supabase.storage)
-    implementation(libs.ktor.client.android)
+
+    // Ktor HTTP Client (for Supabase and Edge Functions)
+    implementation(libs.ktor.client.okhttp)
+    implementation(libs.ktor.client.content.negotiation)
+    implementation(libs.ktor.serialization.json)
 
     // Coroutines
     implementation(libs.kotlinx.coroutines.android)
@@ -93,8 +111,20 @@ dependencies {
     // Image Loading
     implementation(libs.coil.compose)
 
+    // QR Code Generation
+    implementation("com.google.zxing:core:3.5.2")
+
     // DataStore
     implementation(libs.androidx.datastore.preferences)
+
+    // WorkManager for scheduled notifications
+    implementation(libs.androidx.work.runtime)
+    implementation(libs.hilt.work)
+    ksp(libs.hilt.work.compiler)
+
+    // Firebase
+    implementation(platform("com.google.firebase:firebase-bom:34.7.0"))
+    implementation("com.google.firebase:firebase-analytics")
 
     // Testing
     testImplementation(libs.junit)

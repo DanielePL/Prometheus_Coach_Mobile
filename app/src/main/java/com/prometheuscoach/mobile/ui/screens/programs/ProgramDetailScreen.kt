@@ -22,9 +22,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.ui.draw.shadow
 import com.prometheuscoach.mobile.data.model.ProgramWeekWithWorkouts
 import com.prometheuscoach.mobile.data.model.ProgramWorkoutDetail
-import com.prometheuscoach.mobile.data.model.RoutineSummary
+import com.prometheuscoach.mobile.data.model.WorkoutSummary
+import com.prometheuscoach.mobile.ui.components.GradientBackground
 import com.prometheuscoach.mobile.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,87 +58,89 @@ fun ProgramDetailScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        state.program?.name ?: "Program",
-                        color = Color.White,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color.White
+    GradientBackground {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            state.program?.name ?: "Program",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
-                    }
-                },
-                actions = {
-                    // Assign to client button
-                    IconButton(onClick = { showAssignSheet = true }) {
-                        Icon(
-                            Icons.Default.PersonAdd,
-                            contentDescription = "Assign to Client",
-                            tint = PrometheusOrange
-                        )
-                    }
-                    // More options
-                    var showMenu by remember { mutableStateOf(false) }
-                    IconButton(onClick = { showMenu = true }) {
-                        Icon(
-                            Icons.Default.MoreVert,
-                            contentDescription = "More",
-                            tint = Color.White
-                        )
-                    }
-                    DropdownMenu(
-                        expanded = showMenu,
-                        onDismissRequest = { showMenu = false },
-                        containerColor = DarkSurface
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("Edit Program", color = Color.White) },
-                            onClick = {
-                                showMenu = false
-                                // TODO: Navigate to edit
-                            },
-                            leadingIcon = {
-                                Icon(Icons.Default.Edit, null, tint = Gray400)
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Duplicate", color = Color.White) },
-                            onClick = {
-                                showMenu = false
-                                // TODO: Duplicate program
-                            },
-                            leadingIcon = {
-                                Icon(Icons.Default.ContentCopy, null, tint = Gray400)
-                            }
-                        )
-                        HorizontalDivider(color = Gray700)
-                        DropdownMenuItem(
-                            text = { Text("Delete Program", color = ErrorRed) },
-                            onClick = {
-                                showMenu = false
-                                showDeleteDialog = true
-                            },
-                            leadingIcon = {
-                                Icon(Icons.Default.Delete, null, tint = ErrorRed)
-                            }
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkSurface)
-            )
-        },
-        containerColor = Color.Transparent
-    ) { paddingValues ->
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = Color.White
+                            )
+                        }
+                    },
+                    actions = {
+                        // Assign to client button
+                        IconButton(onClick = { showAssignSheet = true }) {
+                            Icon(
+                                Icons.Default.PersonAdd,
+                                contentDescription = "Assign to Client",
+                                tint = PrometheusOrange
+                            )
+                        }
+                        // More options
+                        var showMenu by remember { mutableStateOf(false) }
+                        IconButton(onClick = { showMenu = true }) {
+                            Icon(
+                                Icons.Default.MoreVert,
+                                contentDescription = "More",
+                                tint = Color.White
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false },
+                            containerColor = DarkSurface
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Edit Program", color = Color.White) },
+                                onClick = {
+                                    showMenu = false
+                                    // TODO: Navigate to edit
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Edit, null, tint = Gray400)
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Duplicate", color = Color.White) },
+                                onClick = {
+                                    showMenu = false
+                                    // TODO: Duplicate program
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.ContentCopy, null, tint = Gray400)
+                                }
+                            )
+                            HorizontalDivider(color = Gray700)
+                            DropdownMenuItem(
+                                text = { Text("Delete Program", color = ErrorRed) },
+                                onClick = {
+                                    showMenu = false
+                                    showDeleteDialog = true
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Delete, null, tint = ErrorRed)
+                                }
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                )
+            },
+            containerColor = Color.Transparent
+        ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -191,7 +195,7 @@ fun ProgramDetailScreen(
                                     week = selectedWeek,
                                     workoutsPerWeek = program.workoutsPerWeek,
                                     onWorkoutClick = { workout ->
-                                        onNavigateToWorkoutDetail(workout.routineId)
+                                        onNavigateToWorkoutDetail(workout.workoutId)
                                     },
                                     onAddWorkout = { dayNumber ->
                                         selectedWeekForWorkout = selectedWeek
@@ -208,6 +212,7 @@ fun ProgramDetailScreen(
                 }
             }
         }
+        }
     }
 
     // Add Workout Bottom Sheet
@@ -223,7 +228,7 @@ fun ProgramDetailScreen(
             onSelectWorkout = { workout, dayNumber ->
                 viewModel.addWorkoutToWeek(
                     weekId = selectedWeekForWorkout!!.id,
-                    routineId = workout.id,
+                    workoutId = workout.id,
                     dayNumber = dayNumber
                 )
                 showAddWorkoutSheet = false
@@ -687,7 +692,7 @@ private fun WorkoutSlotCard(
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = workout.routineName,
+                    text = workout.workoutName,
                     color = Color.White,
                     fontWeight = FontWeight.Medium,
                     fontSize = 14.sp
@@ -730,7 +735,7 @@ private fun WorkoutSlotCard(
             title = { Text("Remove Workout?", color = Color.White) },
             text = {
                 Text(
-                    "Remove \"${workout.routineName}\" from this day?",
+                    "Remove \"${workout.workoutName}\" from this day?",
                     color = Gray400
                 )
             },
@@ -762,10 +767,10 @@ private fun WorkoutSlotCard(
 @Composable
 private fun AddWorkoutBottomSheet(
     weekNumber: Int,
-    availableWorkouts: List<RoutineSummary>,
+    availableWorkouts: List<WorkoutSummary>,
     isLoading: Boolean,
     onDismiss: () -> Unit,
-    onSelectWorkout: (RoutineSummary, Int) -> Unit
+    onSelectWorkout: (WorkoutSummary, Int) -> Unit
 ) {
     var selectedDay by remember { mutableIntStateOf(1) }
     val dayNames = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")

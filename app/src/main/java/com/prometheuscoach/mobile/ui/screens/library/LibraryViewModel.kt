@@ -3,7 +3,7 @@ package com.prometheuscoach.mobile.ui.screens.library
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.prometheuscoach.mobile.data.model.ExerciseListItem
-import com.prometheuscoach.mobile.data.model.RoutineSummary
+import com.prometheuscoach.mobile.data.model.WorkoutSummary
 import com.prometheuscoach.mobile.data.repository.WorkoutRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,8 +20,8 @@ data class LibraryState(
     val exerciseCategories: List<String> = emptyList(),
 
     // Workouts
-    val workouts: List<RoutineSummary> = emptyList(),
-    val workoutTemplates: List<RoutineSummary> = emptyList(),
+    val workouts: List<WorkoutSummary> = emptyList(),
+    val workoutTemplates: List<WorkoutSummary> = emptyList(),
 
     // Programs (TODO: implement)
     val programs: List<Any> = emptyList(),
@@ -108,7 +108,7 @@ class LibraryViewModel @Inject constructor(
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true, error = null)
 
-            workoutRepository.getRoutines()
+            workoutRepository.getWorkouts()
                 .onSuccess { workouts ->
                     _state.value = _state.value.copy(
                         workouts = workouts,
@@ -127,11 +127,11 @@ class LibraryViewModel @Inject constructor(
     suspend fun createWorkout(name: String, description: String?): Result<String> {
         _state.value = _state.value.copy(isCreating = true, createError = null)
 
-        return workoutRepository.createRoutine(name, description)
-            .map { routine ->
+        return workoutRepository.createWorkout(name, description)
+            .map { workout ->
                 _state.value = _state.value.copy(isCreating = false)
                 loadWorkouts() // Refresh list
-                routine.id
+                workout.id
             }
             .onFailure { error ->
                 _state.value = _state.value.copy(

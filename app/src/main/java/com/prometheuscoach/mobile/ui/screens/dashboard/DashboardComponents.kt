@@ -10,11 +10,16 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Reply
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,12 +31,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.util.Log
 import kotlinx.coroutines.launch
-import coil.compose.AsyncImage
-import coil.compose.AsyncImagePainter
-import coil.compose.SubcomposeAsyncImage
-import coil.compose.SubcomposeAsyncImageContent
 import com.prometheuscoach.mobile.data.model.*
+import com.prometheuscoach.mobile.ui.components.GlowAvatar
 import com.prometheuscoach.mobile.ui.theme.PrometheusOrange
+import com.prometheuscoach.mobile.ui.theme.RadiusMedium
+import com.prometheuscoach.mobile.ui.theme.RadiusSmall
 import com.prometheuscoach.mobile.ui.theme.SuccessGreen
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -86,7 +90,7 @@ fun SwipeableAlertCard(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(RadiusMedium))
                     .background(DismissRed)
                     .padding(horizontal = 20.dp),
                 contentAlignment = Alignment.CenterEnd
@@ -155,29 +159,12 @@ fun DashboardHeader(
         }
 
         IconButton(onClick = onSettingsClick) {
-            if (avatarUrl != null) {
-                AsyncImage(
-                    model = avatarUrl,
-                    contentDescription = "Profile",
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(PrometheusOrange.copy(alpha = 0.2f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = "Profile",
-                        tint = PrometheusOrange
-                    )
-                }
-            }
+            GlowAvatar(
+                avatarUrl = avatarUrl,
+                name = coachName.ifBlank { "Coach" },
+                size = 40.dp,
+                borderWidth = 1.5.dp
+            )
         }
     }
 }
@@ -312,7 +299,7 @@ fun AlertCard(
 
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(RadiusMedium),
         colors = CardDefaults.cardColors(containerColor = backgroundColor)
     ) {
         Row(
@@ -395,7 +382,7 @@ fun WinCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(RadiusMedium),
         colors = CardDefaults.cardColors(containerColor = WinBackground)
     ) {
         Row(
@@ -474,7 +461,7 @@ fun WinCard(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// CLIENT AVATAR
+// CLIENT AVATAR - Using centralized GlowAvatar component
 // ═══════════════════════════════════════════════════════════════════════════
 
 @Composable
@@ -484,69 +471,13 @@ fun ClientAvatar(
     size: Int = 48,
     modifier: Modifier = Modifier
 ) {
-    Log.d("ClientAvatar", "Avatar for $name: $avatarUrl")
-
-    if (!avatarUrl.isNullOrBlank()) {
-        SubcomposeAsyncImage(
-            model = avatarUrl,
-            contentDescription = "$name avatar",
-            modifier = modifier
-                .size(size.dp)
-                .clip(CircleShape)
-        ) {
-            when (painter.state) {
-                is AsyncImagePainter.State.Loading -> {
-                    Box(
-                        modifier = Modifier
-                            .size(size.dp)
-                            .clip(CircleShape)
-                            .background(PrometheusOrange.copy(alpha = 0.1f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size((size / 2).dp),
-                            color = PrometheusOrange,
-                            strokeWidth = 2.dp
-                        )
-                    }
-                }
-                is AsyncImagePainter.State.Error -> {
-                    Log.e("ClientAvatar", "Failed to load avatar for $name: $avatarUrl")
-                    AvatarFallback(name = name, size = size)
-                }
-                is AsyncImagePainter.State.Success -> {
-                    SubcomposeAsyncImageContent()
-                }
-                else -> {
-                    AvatarFallback(name = name, size = size)
-                }
-            }
-        }
-    } else {
-        AvatarFallback(name = name, size = size, modifier = modifier)
-    }
-}
-
-@Composable
-private fun AvatarFallback(
-    name: String,
-    size: Int,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier
-            .size(size.dp)
-            .clip(CircleShape)
-            .background(PrometheusOrange.copy(alpha = 0.2f)),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = name.firstOrNull()?.uppercase() ?: "?",
-            style = if (size >= 48) MaterialTheme.typography.titleMedium else MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            color = PrometheusOrange
-        )
-    }
+    GlowAvatar(
+        avatarUrl = avatarUrl,
+        name = name,
+        size = size.dp,
+        modifier = modifier,
+        borderWidth = if (size >= 48) 2.dp else 1.5.dp
+    )
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -639,7 +570,7 @@ fun EmptyAlertsMessage(modifier: Modifier = Modifier) {
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(RadiusMedium),
         colors = CardDefaults.cardColors(
             containerColor = SuccessGreen.copy(alpha = 0.1f)
         )
@@ -754,5 +685,219 @@ fun CollapsibleSection(
         exit = shrinkVertically()
     ) {
         content()
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// UNREAD MESSAGES SECTION
+// ═══════════════════════════════════════════════════════════════════════════
+
+private val MessageBlue = Color(0xFF60A5FA)
+private val MessageBackground = Color(0xFF1A2533)
+
+@Composable
+fun MessagesSectionHeader(
+    unreadCount: Int,
+    isExpanded: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onToggle() }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = "NEW MESSAGES",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp,
+            color = if (unreadCount > 0) MessageBlue else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+        )
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        if (unreadCount > 0) {
+            Badge(
+                containerColor = MessageBlue,
+                contentColor = Color.White
+            ) {
+                Text(
+                    text = unreadCount.toString(),
+                    style = MaterialTheme.typography.labelSmall
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        Icon(
+            imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+            contentDescription = if (isExpanded) "Collapse" else "Expand",
+            tint = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f)
+        )
+    }
+}
+
+@Composable
+fun UnreadMessageCard(
+    participantName: String,
+    participantAvatar: String?,
+    lastMessage: String?,
+    unreadCount: Int,
+    onClick: () -> Unit,
+    onQuickReply: ((String) -> Unit)? = null,
+    modifier: Modifier = Modifier
+) {
+    var isReplying by remember { mutableStateOf(false) }
+    var replyText by remember { mutableStateOf("") }
+    var isSending by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(RadiusMedium),
+        colors = CardDefaults.cardColors(
+            containerColor = MessageBackground
+        )
+    ) {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onClick() }
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Avatar
+                ClientAvatar(
+                    avatarUrl = participantAvatar,
+                    name = participantName,
+                    size = 44
+                )
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                // Content
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = participantName,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = lastMessage ?: "New message",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.7f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                // Unread Badge
+                if (unreadCount > 0) {
+                    Badge(
+                        containerColor = MessageBlue,
+                        contentColor = Color.White
+                    ) {
+                        Text(
+                            text = unreadCount.toString(),
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                // Quick Reply Button
+                if (onQuickReply != null && !isReplying) {
+                    IconButton(
+                        onClick = { isReplying = true },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Reply,
+                            contentDescription = "Quick reply",
+                            tint = MessageBlue,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = "Open chat",
+                    tint = Color.White.copy(alpha = 0.5f)
+                )
+            }
+
+            // Quick Reply Input
+            if (isReplying && onQuickReply != null) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = replyText,
+                        onValueChange = { replyText = it },
+                        placeholder = { Text("Quick reply...", color = Color.White.copy(alpha = 0.5f)) },
+                        modifier = Modifier.weight(1f),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MessageBlue,
+                            unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            cursorColor = MessageBlue
+                        ),
+                        shape = RoundedCornerShape(RadiusSmall),
+                        singleLine = true,
+                        enabled = !isSending
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    // Send Button
+                    IconButton(
+                        onClick = {
+                            if (replyText.isNotBlank()) {
+                                isSending = true
+                                onQuickReply(replyText)
+                                replyText = ""
+                                isReplying = false
+                                isSending = false
+                            }
+                        },
+                        enabled = replyText.isNotBlank() && !isSending
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Send,
+                            contentDescription = "Send",
+                            tint = if (replyText.isNotBlank()) MessageBlue else Color.White.copy(alpha = 0.3f)
+                        )
+                    }
+
+                    // Cancel Button
+                    IconButton(
+                        onClick = {
+                            replyText = ""
+                            isReplying = false
+                        },
+                        enabled = !isSending
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Cancel",
+                            tint = Color.White.copy(alpha = 0.5f)
+                        )
+                    }
+                }
+            }
+        }
     }
 }

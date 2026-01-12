@@ -19,6 +19,8 @@ data class ChatState(
     val messages: List<MessageWithSender> = emptyList(),
     val isLoading: Boolean = false,
     val isSending: Boolean = false,
+    val isUploadingAttachment: Boolean = false,
+    val uploadProgress: Float = 0f,
     val error: String? = null
 )
 
@@ -127,5 +129,60 @@ class ChatViewModel @Inject constructor(
 
     fun clearError() {
         _state.value = _state.value.copy(error = null)
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ATTACHMENT FUNCTIONS
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Send a message with an attachment (image or document).
+     */
+    fun sendMessageWithAttachment(
+        fileBytes: ByteArray,
+        fileName: String,
+        mimeType: String,
+        fileSize: Long,
+        caption: String = ""
+    ) {
+        val conversationId = _state.value.conversationId
+        if (conversationId.isEmpty()) return
+
+        viewModelScope.launch {
+            _state.value = _state.value.copy(
+                isUploadingAttachment = true,
+                isSending = true
+            )
+
+            chatRepository.sendMessageWithAttachment(
+                conversationId = conversationId,
+                content = caption,
+                fileBytes = fileBytes,
+                fileName = fileName,
+                mimeType = mimeType,
+                fileSize = fileSize
+            )
+                .onSuccess {
+                    _state.value = _state.value.copy(
+                        isUploadingAttachment = false,
+                        isSending = false
+                    )
+                    loadMessages(conversationId)
+                }
+                .onFailure { error ->
+                    _state.value = _state.value.copy(
+                        isUploadingAttachment = false,
+                        isSending = false,
+                        error = error.message ?: "Failed to send attachment"
+                    )
+                }
+        }
+    }
+
+    /**
+     * Get a signed URL for viewing/downloading an attachment.
+     */
+    suspend fun getAttachmentUrl(filePath: String): String? {
+        return chatRepository.getAttachmentUrl(filePath).getOrNull()
     }
 }

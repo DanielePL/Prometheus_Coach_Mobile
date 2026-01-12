@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.prometheuscoach.mobile.data.model.ProgramWeekWithWorkouts
 import com.prometheuscoach.mobile.data.model.ProgramWithWeeks
-import com.prometheuscoach.mobile.data.model.RoutineSummary
+import com.prometheuscoach.mobile.data.model.WorkoutSummary
 import com.prometheuscoach.mobile.data.repository.ProgramRepository
 import com.prometheuscoach.mobile.data.repository.WorkoutRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -18,7 +18,7 @@ data class ProgramDetailState(
     val program: ProgramWithWeeks? = null,
     val isLoading: Boolean = false,
     val error: String? = null,
-    val availableWorkouts: List<RoutineSummary> = emptyList(),
+    val availableWorkouts: List<WorkoutSummary> = emptyList(),
     val isAddingWorkout: Boolean = false,
     val addWorkoutError: String? = null,
     val isDeleting: Boolean = false,
@@ -56,7 +56,7 @@ class ProgramDetailViewModel @Inject constructor(
 
     fun loadAvailableWorkouts() {
         viewModelScope.launch {
-            workoutRepository.getRoutines()
+            workoutRepository.getWorkouts()
                 .onSuccess { workouts ->
                     _state.value = _state.value.copy(availableWorkouts = workouts)
                 }
@@ -65,7 +65,7 @@ class ProgramDetailViewModel @Inject constructor(
 
     fun addWorkoutToWeek(
         weekId: String,
-        routineId: String,
+        workoutId: String,
         dayNumber: Int,
         notes: String? = null
     ) {
@@ -74,7 +74,7 @@ class ProgramDetailViewModel @Inject constructor(
 
             programRepository.addWorkoutToWeek(
                 programWeekId = weekId,
-                routineId = routineId,
+                workoutId = workoutId,
                 dayNumber = dayNumber,
                 notes = notes
             )

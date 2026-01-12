@@ -54,6 +54,19 @@ data class CommunityPost(
 )
 
 /**
+ * Request model for creating a new community post.
+ * Does NOT include id, likes_count, comments_count, or timestamps - those are set by the database.
+ */
+@Serializable
+data class CreateCommunityPostRequest(
+    @SerialName("user_id") val userId: String,
+    val caption: String? = null,
+    val visibility: String = "public",
+    @SerialName("image_urls") val imageUrls: List<String>? = null,
+    @SerialName("video_urls") val videoUrls: List<String>? = null
+)
+
+/**
  * Post with joined user data for feed display.
  * Represents a workout post from a client.
  */
@@ -80,7 +93,9 @@ data class FeedPost(
     val likesCount: Int = 0,
     val commentsCount: Int = 0,
     val createdAt: String? = null,
-    val isLiked: Boolean = false
+    val isLiked: Boolean = false,
+    // Preview comments for feed display (last 2-3 comments)
+    val previewComments: List<CommunityComment> = emptyList()
 ) {
     val userDisplayName: String? get() = userName
     val userAvatarUrl: String? get() = userAvatar
@@ -164,7 +179,91 @@ data class UserCommunityStats(
     val followingCount: Int = 0,
     val postsCount: Int = 0,
     val isFollowing: Boolean = false,
-    val isFollowedBy: Boolean = false
+    val isFollowedBy: Boolean = false,
+    val isPendingFollow: Boolean = false
+)
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COMMUNITY PROFILE
+// ═══════════════════════════════════════════════════════════════════════════
+
+@Serializable
+data class CommunityProfile(
+    @SerialName("user_id") val userId: String,
+    @SerialName("is_public") val isPublic: Boolean = true,
+    @SerialName("display_name") val displayName: String? = null,
+    val bio: String? = null,
+    @SerialName("show_in_leaderboard") val showInLeaderboard: Boolean = true,
+    @SerialName("allow_follow_requests") val allowFollowRequests: Boolean = true,
+    @SerialName("auto_share_workouts") val autoShareWorkouts: Boolean = false,
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("updated_at") val updatedAt: String? = null
+)
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LEADERBOARD
+// ═══════════════════════════════════════════════════════════════════════════
+
+@Serializable
+data class LeaderboardEntry(
+    val id: String = "",
+    @SerialName("user_id") val userId: String,
+    @SerialName("exercise_id") val exerciseId: String,
+    @SerialName("exercise_name") val exerciseName: String,
+    @SerialName("pr_weight_kg") val prWeightKg: Double? = null,
+    @SerialName("pr_reps") val prReps: Int? = null,
+    @SerialName("estimated_1rm_kg") val estimated1rmKg: Double? = null,
+    @SerialName("user_bodyweight_kg") val userBodyweightKg: Double? = null,
+    @SerialName("wilks_score") val wilksScore: Double? = null,
+    @SerialName("dots_score") val dotsScore: Double? = null,
+    @SerialName("achieved_at") val achievedAt: String? = null,
+    @SerialName("updated_at") val updatedAt: String? = null,
+    @SerialName("user_name") val userName: String? = null,
+    @SerialName("user_avatar") val userAvatar: String? = null,
+    var rank: Int = 0,
+    @SerialName("is_current_user") val isCurrentUser: Boolean = false,
+    @SerialName("is_pr") val isPr: Boolean = false
+) {
+    val userDisplayName: String? get() = userName
+    val userAvatarUrl: String? get() = userAvatar
+}
+
+object LeaderboardExercises {
+    val EXERCISES = listOf(
+        LeaderboardExercise("bench_press", "Bench Press"),
+        LeaderboardExercise("squat", "Squat"),
+        LeaderboardExercise("deadlift", "Deadlift"),
+        LeaderboardExercise("overhead_press", "Overhead Press"),
+        LeaderboardExercise("barbell_row", "Barbell Row"),
+        LeaderboardExercise("weighted_pullup", "Weighted Pull-Up")
+    )
+
+    fun getExerciseName(id: String): String {
+        return EXERCISES.find { it.id == id }?.name ?: id
+    }
+}
+
+data class LeaderboardExercise(
+    val id: String,
+    val name: String
+)
+
+data class LeaderboardState(
+    val entries: List<LeaderboardEntry> = emptyList(),
+    val selectedExercise: String = "bench_press",
+    val friendsOnly: Boolean = false,
+    val isLoading: Boolean = false,
+    val error: String? = null,
+    val currentUserRank: Int? = null
+)
+
+data class UserProfileState(
+    val profile: CommunityUserProfile? = null,
+    val posts: List<FeedPost> = emptyList(),
+    val isLoading: Boolean = false,
+    val isLoadingPosts: Boolean = false,
+    val isCurrentUser: Boolean = false,
+    val error: String? = null
 )
 
 data class CommunityUserProfile(
@@ -217,8 +316,13 @@ data class CreatePostState(
     val title: String = "",
     val content: String = "",
     val imageUrls: List<String> = emptyList(),
+    val videoUrls: List<String> = emptyList(),
+    val selectedImageUris: List<String> = emptyList(),
+    val selectedVideoUris: List<String> = emptyList(),
     val visibility: PostVisibility = PostVisibility.PUBLIC,
     val isPosting: Boolean = false,
+    val isUploadingMedia: Boolean = false,
+    val uploadProgress: Float = 0f,
     val error: String? = null,
     val isSuccess: Boolean = false
 )

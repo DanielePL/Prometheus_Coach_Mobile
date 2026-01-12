@@ -32,7 +32,12 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.prometheuscoach.mobile.data.model.CalendarEvent
 import com.prometheuscoach.mobile.data.model.CalendarEventType
 import com.prometheuscoach.mobile.data.model.Client
+import com.prometheuscoach.mobile.ui.components.GlowAvatarSmall
+import com.prometheuscoach.mobile.ui.components.GradientBackground
 import com.prometheuscoach.mobile.ui.theme.PrometheusOrange
+import com.prometheuscoach.mobile.ui.theme.RadiusExtraSmall
+import com.prometheuscoach.mobile.ui.theme.RadiusLarge
+import com.prometheuscoach.mobile.ui.theme.RadiusSmall
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -49,37 +54,39 @@ fun CalendarScreen(
     val state by viewModel.calendarState.collectAsState()
     var showAddEventSheet by remember { mutableStateOf(false) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Schedule", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    TextButton(onClick = { viewModel.goToToday() }) {
-                        Text("Today", color = PrometheusOrange)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+    GradientBackground {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Schedule", fontWeight = FontWeight.Bold) },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    },
+                    actions = {
+                        TextButton(onClick = { viewModel.goToToday() }) {
+                            Text("Today", color = PrometheusOrange)
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent
+                    )
                 )
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    viewModel.loadClients()
-                    showAddEventSheet = true
-                },
-                containerColor = PrometheusOrange
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Event", tint = Color.White)
-            }
-        }
-    ) { paddingValues ->
+            },
+            floatingActionButton = {
+                FloatingActionButton(
+                    onClick = {
+                        viewModel.loadClients()
+                        showAddEventSheet = true
+                    },
+                    containerColor = PrometheusOrange
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Event", tint = Color.White)
+                }
+            },
+            containerColor = Color.Transparent
+        ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -111,6 +118,7 @@ fun CalendarScreen(
                 onDeleteEvent = { viewModel.deleteEvent(it) },
                 onMarkComplete = { viewModel.updateEventStatus(it, "completed") }
             )
+        }
         }
     }
 
@@ -319,7 +327,7 @@ private fun SelectedDateSection(
             .fillMaxSize()
             .background(
                 MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                RoundedCornerShape(topStart = RadiusLarge, topEnd = RadiusLarge)
             )
     ) {
         // Date header
@@ -428,7 +436,7 @@ private fun EventCard(
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .background(eventColor.copy(alpha = 0.15f), RoundedCornerShape(8.dp)),
+                    .background(eventColor.copy(alpha = 0.15f), RoundedCornerShape(RadiusExtraSmall)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -726,22 +734,10 @@ private fun AddEventBottomSheet(
                                             .padding(12.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(32.dp)
-                                                .background(
-                                                    PrometheusOrange.copy(alpha = 0.2f),
-                                                    CircleShape
-                                                ),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                text = client.fullName.firstOrNull()?.uppercase() ?: "?",
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                fontWeight = FontWeight.Bold,
-                                                color = PrometheusOrange
-                                            )
-                                        }
+                                        GlowAvatarSmall(
+                                            avatarUrl = client.avatarUrl,
+                                            name = client.fullName
+                                        )
                                         Spacer(modifier = Modifier.width(12.dp))
                                         Text(client.fullName)
                                     }
@@ -825,7 +821,7 @@ private fun AddEventBottomSheet(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = PrometheusOrange
                 ),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(RadiusSmall)
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(

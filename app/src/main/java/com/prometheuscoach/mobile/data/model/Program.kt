@@ -65,8 +65,8 @@ data class ProgramWorkout(
     val id: String,
     @SerialName("program_week_id")
     val programWeekId: String,
-    @SerialName("routine_id")
-    val routineId: String,
+    @SerialName("workout_id")
+    val workoutId: String,
     @SerialName("day_number")
     val dayNumber: Int, // 1-7 for Monday-Sunday
     val notes: String? = null,
@@ -110,8 +110,8 @@ data class CreateProgramWeekRequest(
 data class AddProgramWorkoutRequest(
     @SerialName("program_week_id")
     val programWeekId: String,
-    @SerialName("routine_id")
-    val routineId: String,
+    @SerialName("workout_id")
+    val workoutId: String,
     @SerialName("day_number")
     val dayNumber: Int,
     val notes: String? = null
@@ -134,8 +134,8 @@ data class ProgramWeekWithWorkouts(
 data class ProgramWorkoutDetail(
     val id: String,
     val dayNumber: Int,
-    val routineId: String,
-    val routineName: String,
+    val workoutId: String,
+    val workoutName: String,
     val exerciseCount: Int,
     val notes: String?
 )

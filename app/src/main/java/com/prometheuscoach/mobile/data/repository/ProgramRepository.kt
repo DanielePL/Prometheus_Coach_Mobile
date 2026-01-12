@@ -1,6 +1,8 @@
 package com.prometheuscoach.mobile.data.repository
 
 import android.util.Log
+import com.prometheuscoach.mobile.data.cache.CacheKeys
+import com.prometheuscoach.mobile.data.cache.SessionCache
 import com.prometheuscoach.mobile.data.model.*
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
@@ -15,7 +17,8 @@ import javax.inject.Singleton
 @Singleton
 class ProgramRepository @Inject constructor(
     private val supabaseClient: SupabaseClient,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val cache: SessionCache
 ) {
     companion object {
         private const val TAG = "ProgramRepository"
@@ -25,11 +28,20 @@ class ProgramRepository @Inject constructor(
 
     /**
      * Get all programs for the current coach.
+     * Results are cached for 5 minutes.
      */
-    suspend fun getPrograms(): Result<List<ProgramSummary>> {
+    suspend fun getPrograms(forceRefresh: Boolean = false): Result<List<ProgramSummary>> {
         return try {
             val coachId = authRepository.getCurrentUserId()
                 ?: return Result.failure(Exception("Not authenticated"))
+
+            // Check cache first
+            if (!forceRefresh) {
+                cache.get<List<ProgramSummary>>(CacheKeys.PROGRAMS)?.let {
+                    Log.d(TAG, "Returning ${it.size} cached programs")
+                    return Result.success(it)
+                }
+            }
 
             val programs = supabaseClient.postgrest
                 .from("programs")
@@ -52,12 +64,22 @@ class ProgramRepository @Inject constructor(
                 )
             }
 
+            // Cache the result
+            cache.put(CacheKeys.PROGRAMS, summaries)
+
             Log.d(TAG, "Loaded ${summaries.size} programs")
             Result.success(summaries)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to get programs", e)
             Result.failure(e)
         }
+    }
+
+    /**
+     * Invalidate programs cache. Call after creating/updating/deleting programs.
+     */
+    fun invalidateProgramsCache() {
+        cache.invalidate(CacheKeys.PROGRAMS)
     }
 
     /**
@@ -102,33 +124,33 @@ class ProgramRepository @Inject constructor(
                 emptyList()
             }
 
-            // Get routine details for workouts
-            val routineIds = workouts.map { it.routineId }.distinct()
-            val routines = if (routineIds.isNotEmpty()) {
+            // Get workout template details for program workouts
+            val workoutTemplateIds = workouts.map { it.workoutId }.distinct()
+            val workoutTemplates = if (workoutTemplateIds.isNotEmpty()) {
                 supabaseClient.postgrest
-                    .from("routines")
+                    .from("workouts")
                     .select {
-                        filter { isIn("id", routineIds) }
+                        filter { isIn("id", workoutTemplateIds) }
                     }
-                    .decodeList<Routine>()
+                    .decodeList<Workout>()
             } else {
                 emptyList()
             }
-            val routineMap = routines.associateBy { it.id }
+            val workoutMap = workoutTemplates.associateBy { it.id }
 
             // Build the full structure
             val weeksWithWorkouts = weeks.map { week ->
                 val weekWorkouts = workouts
                     .filter { it.programWeekId == week.id }
-                    .map { workout ->
-                        val routine = routineMap[workout.routineId]
+                    .map { programWorkout ->
+                        val workoutTemplate = workoutMap[programWorkout.workoutId]
                         ProgramWorkoutDetail(
-                            id = workout.id,
-                            dayNumber = workout.dayNumber,
-                            routineId = workout.routineId,
-                            routineName = routine?.name ?: "Unknown",
+                            id = programWorkout.id,
+                            dayNumber = programWorkout.dayNumber,
+                            workoutId = programWorkout.workoutId,
+                            workoutName = workoutTemplate?.name ?: "Unknown",
                             exerciseCount = 0, // TODO: Get exercise count
-                            notes = workout.notes
+                            notes = programWorkout.notes
                         )
                     }
 
@@ -157,6 +179,31 @@ class ProgramRepository @Inject constructor(
             Result.success(result)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to get program with weeks", e)
+            Result.failure(e)
+        }
+    }
+
+    // ==================== COUNT OPERATIONS ====================
+
+    /**
+     * Get the total count of programs for the current coach.
+     */
+    suspend fun getProgramCount(): Result<Int> {
+        return try {
+            val coachId = authRepository.getCurrentUserId()
+                ?: return Result.failure(Exception("Not authenticated"))
+
+            val programs = supabaseClient.postgrest
+                .from("programs")
+                .select {
+                    filter { eq("coach_id", coachId) }
+                }
+                .decodeList<Program>()
+
+            Log.d(TAG, "Program count for coach: ${programs.size}")
+            Result.success(programs.size)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get program count", e)
             Result.failure(e)
         }
     }
@@ -271,7 +318,7 @@ class ProgramRepository @Inject constructor(
      */
     suspend fun addWorkoutToWeek(
         programWeekId: String,
-        routineId: String,
+        workoutId: String,
         dayNumber: Int,
         notes: String? = null
     ): Result<ProgramWorkout> {
@@ -280,7 +327,7 @@ class ProgramRepository @Inject constructor(
 
             val request = AddProgramWorkoutRequest(
                 programWeekId = programWeekId,
-                routineId = routineId,
+                workoutId = workoutId,
                 dayNumber = dayNumber,
                 notes = notes
             )

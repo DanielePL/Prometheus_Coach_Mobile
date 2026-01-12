@@ -1,5 +1,6 @@
 package com.prometheuscoach.mobile.data.repository
 
+import android.util.Log
 import com.prometheuscoach.mobile.data.model.*
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
@@ -74,6 +75,7 @@ class ProgressRepository @Inject constructor(
 
     /**
      * Get personal bests for a client.
+     * NOTE: If the client_personal_bests_v view doesn't exist, returns empty list.
      */
     suspend fun getPersonalBests(clientId: String): Result<List<PersonalBest>> {
         return try {
@@ -85,15 +87,21 @@ class ProgressRepository @Inject constructor(
                 return Result.failure(Exception("Access denied"))
             }
 
-            val pbs = supabaseClient.postgrest
-                .from("client_personal_bests_v")
-                .select {
-                    filter {
-                        eq("user_id", clientId)
+            val pbs = try {
+                supabaseClient.postgrest
+                    .from("client_personal_bests_v")
+                    .select {
+                        filter {
+                            eq("user_id", clientId)
+                        }
+                        order("achieved_at", Order.DESCENDING)
                     }
-                    order("achieved_at", Order.DESCENDING)
-                }
-                .decodeList<PersonalBest>()
+                    .decodeList<PersonalBest>()
+            } catch (e: Exception) {
+                // View might not exist - return empty list
+                Log.w("ProgressRepository", "Could not fetch personal bests (view may not exist): ${e.message}")
+                emptyList()
+            }
 
             Result.success(pbs)
         } catch (e: Exception) {
@@ -148,16 +156,21 @@ class ProgressRepository @Inject constructor(
                 workoutsCompleted * 5
             } else 0
 
-            // Get personal bests count for period
-            val pbs = supabaseClient.postgrest
-                .from("client_personal_bests_v")
-                .select {
-                    filter {
-                        eq("user_id", clientId)
-                        gte("achieved_at", startDate.format(dateFormatter))
+            // Get personal bests count for period (view might not exist)
+            val pbs = try {
+                supabaseClient.postgrest
+                    .from("client_personal_bests_v")
+                    .select {
+                        filter {
+                            eq("user_id", clientId)
+                            gte("achieved_at", startDate.format(dateFormatter))
+                        }
                     }
-                }
-                .decodeList<PersonalBest>()
+                    .decodeList<PersonalBest>()
+            } catch (e: Exception) {
+                Log.w("ProgressRepository", "Could not fetch personal bests for summary: ${e.message}")
+                emptyList()
+            }
 
             // Calculate streak
             val streak = calculateStreak(logs)

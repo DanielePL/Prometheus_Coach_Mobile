@@ -2,6 +2,7 @@ package com.prometheuscoach.mobile.ui.screens.library
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -27,7 +28,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.prometheuscoach.mobile.data.model.ExerciseListItem
-import com.prometheuscoach.mobile.data.model.RoutineSummary
+import com.prometheuscoach.mobile.data.model.WorkoutSummary
+import com.prometheuscoach.mobile.ui.components.GradientBackground
 import com.prometheuscoach.mobile.ui.theme.*
 import kotlinx.coroutines.launch
 
@@ -124,16 +126,9 @@ fun LibraryScreen(
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(DarkBackground, DarkBackgroundSecondary)
-                )
-            )
-    ) {
-        Column(modifier = Modifier.fillMaxSize()) {
+    GradientBackground {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize()) {
             // Header
             if (isSelectionMode) {
                 SelectionModeHeader(
@@ -272,6 +267,7 @@ fun LibraryScreen(
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Create", modifier = Modifier.size(28.dp))
             }
+        }
         }
     }
 
@@ -722,70 +718,162 @@ private fun ExerciseCard(
     isSelectionMode: Boolean,
     onClick: () -> Unit
 ) {
-    Card(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkSurface),
-        border = BorderStroke(1.dp, if (isSelectionMode) PrometheusOrange else Gray700)
+            .height(160.dp)
+            .glassPremium(cornerRadius = RadiusMedium)
+            .then(
+                if (isSelectionMode) Modifier.border(
+                    width = 2.dp,
+                    color = PrometheusOrange,
+                    shape = RoundedCornerShape(RadiusMedium)
+                ) else Modifier
+            )
+            .clickable(onClick = onClick)
     ) {
-        Column(
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .fillMaxSize()
+                .padding(12.dp)
         ) {
-            // Exercise Icon
-            Surface(
-                modifier = Modifier.size(40.dp),
-                shape = RoundedCornerShape(10.dp),
-                color = PrometheusOrange.copy(alpha = 0.2f)
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        Icons.Default.FitnessCenter,
-                        contentDescription = null,
-                        tint = PrometheusOrange,
-                        modifier = Modifier.size(20.dp)
+                // Header - Name & VBT badges
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Text(
+                        text = exercise.name,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
                     )
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (exercise.supportsPowerScore || exercise.vbtEnabled) {
+                            VbtBadge(icon = Icons.Default.Bolt, tooltip = "Power Score")
+                        }
+                        if (exercise.supportsTechniqueScore) {
+                            VbtBadge(icon = Icons.Default.CheckCircle, tooltip = "Technique Score")
+                        }
+                    }
+                }
+
+                // Main info - Muscle & Equipment
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    // Main muscle group
+                    val mainMuscle = exercise.mainMuscleGroup ?: exercise.category
+                    if (mainMuscle != null) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Accessibility,
+                                contentDescription = null,
+                                tint = PrometheusOrange,
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Text(
+                                text = mainMuscle,
+                                color = PrometheusOrange,
+                                fontSize = 11.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
+                    // Equipment
+                    val equipment = exercise.equipment?.firstOrNull()
+                    if (equipment != null) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.FitnessCenter,
+                                contentDescription = null,
+                                tint = Gray400,
+                                modifier = Modifier.size(12.dp)
+                            )
+                            Text(
+                                text = equipment,
+                                color = Gray400,
+                                fontSize = 10.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+
+                // Sport tags & tracking indicators
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    // Sport tags
+                    if (!exercise.sports.isNullOrEmpty()) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            exercise.sports.take(2).forEach { sport ->
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = PrometheusOrange.copy(alpha = 0.2f),
+                                    border = BorderStroke(0.5.dp, PrometheusOrange.copy(alpha = 0.5f))
+                                ) {
+                                    Text(
+                                        text = sport,
+                                        color = PrometheusOrange,
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                        letterSpacing = 0.5.sp
+                                    )
+                                }
+                            }
+                            if (exercise.sports.size > 2) {
+                                Text(
+                                    text = "+${exercise.sports.size - 2}",
+                                    color = Gray400,
+                                    fontSize = 9.sp,
+                                    modifier = Modifier.padding(start = 2.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    // Tracking indicators
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (exercise.trackWeight) TrackingIndicator(text = "kg")
+                        if (exercise.trackReps) TrackingIndicator(text = "×")
+                        if (exercise.trackDuration) TrackingIndicator(text = "⏱")
+                        if (exercise.trackDistance) TrackingIndicator(text = "m")
+                        if (exercise.trackRpe) TrackingIndicator(text = "RPE")
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                exercise.name,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                color = Color.White
-            )
-
-            // Category / Muscle Group
-            val category = exercise.category ?: exercise.mainMuscleGroup
-            if (category != null) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    category,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = PrometheusOrange,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            // Equipment
-            val equipment = exercise.equipment?.firstOrNull()
-            if (equipment != null) {
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    equipment,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Gray400,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+            // Selection indicator
+            if (isSelectionMode) {
+                Icon(
+                    Icons.Default.AddCircle,
+                    contentDescription = "Add",
+                    tint = PrometheusOrange,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .size(28.dp)
                 )
             }
         }
@@ -793,9 +881,50 @@ private fun ExerciseCard(
 }
 
 @Composable
+private fun VbtBadge(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    tooltip: String
+) {
+    Surface(
+        shape = androidx.compose.foundation.shape.CircleShape,
+        color = PrometheusOrange,
+        modifier = Modifier.size(20.dp)
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = tooltip,
+                tint = Color.White,
+                modifier = Modifier.size(12.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun TrackingIndicator(text: String) {
+    Surface(
+        shape = RoundedCornerShape(3.dp),
+        color = Gray400.copy(alpha = 0.15f),
+        border = BorderStroke(0.5.dp, Gray400.copy(alpha = 0.3f))
+    ) {
+        Text(
+            text = text,
+            color = Gray400,
+            fontSize = 8.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+        )
+    }
+}
+
+@Composable
 private fun WorkoutsContent(
     subTab: Int,
-    workouts: List<RoutineSummary>,
+    workouts: List<WorkoutSummary>,
     isLoading: Boolean,
     error: String?,
     searchQuery: String,
@@ -824,7 +953,7 @@ private fun WorkoutsContent(
 
 @Composable
 private fun MyWorkoutsTab(
-    workouts: List<RoutineSummary>,
+    workouts: List<WorkoutSummary>,
     isLoading: Boolean,
     error: String?,
     searchQuery: String,
@@ -888,17 +1017,22 @@ private fun WorkoutTemplatesTab(
 
 @Composable
 private fun WorkoutCard(
-    workout: RoutineSummary,
+    workout: WorkoutSummary,
     isSelectionMode: Boolean,
     onClick: () -> Unit
 ) {
-    Card(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkSurface),
-        border = BorderStroke(1.dp, if (isSelectionMode) PrometheusOrange else Gray700)
+            .glassPremium(cornerRadius = RadiusMedium)
+            .then(
+                if (isSelectionMode) Modifier.border(
+                    width = 2.dp,
+                    color = PrometheusOrange,
+                    shape = RoundedCornerShape(RadiusMedium)
+                ) else Modifier
+            )
+            .clickable(onClick = onClick)
     ) {
         Row(
             modifier = Modifier

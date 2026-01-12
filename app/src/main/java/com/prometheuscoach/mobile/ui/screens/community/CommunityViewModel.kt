@@ -1,5 +1,6 @@
 package com.prometheuscoach.mobile.ui.screens.community
 
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -147,11 +148,20 @@ class CommunityViewModel @Inject constructor(
 
     fun toggleLike(postId: String) {
         viewModelScope.launch {
-            val post = _feedState.value.posts.find { it.id == postId } ?: return@launch
+            // Check both feed and detail state for the post
+            val feedPost = _feedState.value.posts.find { it.id == postId }
+            val detailPost = _postDetailState.value.post?.takeIf { it.id == postId }
+            val post = feedPost ?: detailPost ?: return@launch
             val isCurrentlyLiked = post.isLiked
 
-            // Optimistic update
+            // Optimistic update - both feed and detail
             updatePostInFeed(postId) { currentPost ->
+                currentPost.copy(
+                    isLiked = !isCurrentlyLiked,
+                    likesCount = if (isCurrentlyLiked) currentPost.likesCount - 1 else currentPost.likesCount + 1
+                )
+            }
+            updatePostInDetail(postId) { currentPost ->
                 currentPost.copy(
                     isLiked = !isCurrentlyLiked,
                     likesCount = if (isCurrentlyLiked) currentPost.likesCount - 1 else currentPost.likesCount + 1
@@ -174,6 +184,12 @@ class CommunityViewModel @Inject constructor(
                         likesCount = if (isCurrentlyLiked) currentPost.likesCount + 1 else currentPost.likesCount - 1
                     )
                 }
+                updatePostInDetail(postId) { currentPost ->
+                    currentPost.copy(
+                        isLiked = isCurrentlyLiked,
+                        likesCount = if (isCurrentlyLiked) currentPost.likesCount + 1 else currentPost.likesCount - 1
+                    )
+                }
             }
         }
     }
@@ -185,6 +201,17 @@ class CommunityViewModel @Inject constructor(
                     if (post.id == postId) transform(post) else post
                 }
             )
+        }
+    }
+
+    private fun updatePostInDetail(postId: String, transform: (FeedPost) -> FeedPost) {
+        _postDetailState.update { state ->
+            val currentPost = state.post
+            if (currentPost != null && currentPost.id == postId) {
+                state.copy(post = transform(currentPost))
+            } else {
+                state
+            }
         }
     }
 
@@ -236,8 +263,13 @@ class CommunityViewModel @Inject constructor(
                 _postDetailState.update {
                     it.copy(comments = it.comments + comment)
                 }
+                // Update both comments count and add to preview comments
                 updatePostInFeed(postId) { post ->
-                    post.copy(commentsCount = post.commentsCount + 1)
+                    val updatedPreviewComments = (post.previewComments + comment).takeLast(2)
+                    post.copy(
+                        commentsCount = post.commentsCount + 1,
+                        previewComments = updatedPreviewComments
+                    )
                 }
                 Log.d(TAG, "Comment added")
             }.onFailure { error ->
@@ -266,10 +298,138 @@ class CommunityViewModel @Inject constructor(
         _createPostState.update { it.copy(visibility = visibility) }
     }
 
+    fun addSelectedImage(uri: String) {
+        _createPostState.update { state ->
+            state.copy(selectedImageUris = state.selectedImageUris + uri)
+        }
+    }
+
+    fun removeSelectedImage(uri: String) {
+        _createPostState.update { state ->
+            state.copy(selectedImageUris = state.selectedImageUris - uri)
+        }
+    }
+
+    fun addSelectedVideo(uri: String) {
+        _createPostState.update { state ->
+            state.copy(selectedVideoUris = state.selectedVideoUris + uri)
+        }
+    }
+
+    fun removeSelectedVideo(uri: String) {
+        _createPostState.update { state ->
+            state.copy(selectedVideoUris = state.selectedVideoUris - uri)
+        }
+    }
+
     fun createPost() {
-        // Posts are workout-based and created by clients, not coaches
-        _createPostState.update {
-            it.copy(error = "Posts are created automatically when clients share their workouts")
+        viewModelScope.launch {
+            _createPostState.update { it.copy(isPosting = true, error = null) }
+
+            try {
+                val state = _createPostState.value
+                val uploadedImageUrls = mutableListOf<String>()
+                val uploadedVideoUrls = mutableListOf<String>()
+
+                // Upload images
+                if (state.selectedImageUris.isNotEmpty()) {
+                    _createPostState.update { it.copy(isUploadingMedia = true) }
+                    val totalMedia = state.selectedImageUris.size + state.selectedVideoUris.size
+                    var uploadedCount = 0
+
+                    for (imageUri in state.selectedImageUris) {
+                        val result = communityRepository.uploadImage(Uri.parse(imageUri))
+                        result.onSuccess { url ->
+                            uploadedImageUrls.add(url)
+                            uploadedCount++
+                            _createPostState.update {
+                                it.copy(uploadProgress = uploadedCount.toFloat() / totalMedia)
+                            }
+                        }.onFailure { error ->
+                            Log.e(TAG, "Failed to upload image: ${error.message}")
+                            _createPostState.update {
+                                it.copy(
+                                    isPosting = false,
+                                    isUploadingMedia = false,
+                                    error = "Failed to upload image: ${error.message}"
+                                )
+                            }
+                            return@launch
+                        }
+                    }
+                }
+
+                // Upload videos
+                if (state.selectedVideoUris.isNotEmpty()) {
+                    _createPostState.update { it.copy(isUploadingMedia = true) }
+                    val totalMedia = state.selectedImageUris.size + state.selectedVideoUris.size
+                    var uploadedCount = state.selectedImageUris.size
+
+                    for (videoUri in state.selectedVideoUris) {
+                        val result = communityRepository.uploadVideo(Uri.parse(videoUri))
+                        result.onSuccess { url ->
+                            uploadedVideoUrls.add(url)
+                            uploadedCount++
+                            _createPostState.update {
+                                it.copy(uploadProgress = uploadedCount.toFloat() / totalMedia)
+                            }
+                        }.onFailure { error ->
+                            Log.e(TAG, "Failed to upload video: ${error.message}")
+                            _createPostState.update {
+                                it.copy(
+                                    isPosting = false,
+                                    isUploadingMedia = false,
+                                    error = "Failed to upload video: ${error.message}"
+                                )
+                            }
+                            return@launch
+                        }
+                    }
+                }
+
+                _createPostState.update { it.copy(isUploadingMedia = false) }
+
+                // Create the post
+                val visibility = when (state.visibility) {
+                    PostVisibility.PUBLIC -> "public"
+                    PostVisibility.FOLLOWERS -> "followers"
+                    PostVisibility.PRIVATE -> "private"
+                }
+
+                communityRepository.createPost(
+                    caption = state.content,
+                    imageUrls = uploadedImageUrls,
+                    videoUrls = uploadedVideoUrls,
+                    visibility = visibility
+                ).onSuccess { post ->
+                    Log.d(TAG, "Post created successfully: ${post.id}")
+                    _createPostState.update {
+                        it.copy(
+                            isPosting = false,
+                            isSuccess = true
+                        )
+                    }
+                    // Refresh the feed
+                    loadFeed(refresh = true)
+                }.onFailure { error ->
+                    Log.e(TAG, "Failed to create post: ${error.message}")
+                    _createPostState.update {
+                        it.copy(
+                            isPosting = false,
+                            error = "Failed to create post: ${error.message}"
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Exception creating post: ${e.message}")
+                _createPostState.update {
+                    it.copy(
+                        isPosting = false,
+                        isUploadingMedia = false,
+                        error = "Error: ${e.message}"
+                    )
+                }
+            }
         }
     }
 

@@ -11,10 +11,10 @@ data class WorkoutLog(
     val id: String,
     @SerialName("user_id")
     val clientId: String,
-    @SerialName("routine_id")
-    val routineId: String? = null,
-    @SerialName("routine_name")
-    val routineName: String? = null,
+    @SerialName("workout_id")
+    val workoutId: String? = null,
+    @SerialName("workout_name")
+    val workoutName: String? = null,
     @SerialName("started_at")
     val startedAt: String,
     @SerialName("completed_at")

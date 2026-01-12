@@ -6,6 +6,8 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Order
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -73,13 +75,19 @@ class AlertRepository @Inject constructor(
 
             Log.d(TAG, "Found ${clients.size} clients")
 
-            // Generate alerts for each client
-            val alerts = mutableListOf<ClientAlert>()
+            // Generate alerts for each client IN PARALLEL for better performance
+            val alertLists = clients.map { client ->
+                async {
+                    try {
+                        generateAlertsForClient(client)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error generating alerts for ${client.clientName}", e)
+                        emptyList()
+                    }
+                }
+            }.awaitAll()
 
-            for (client in clients) {
-                val clientAlerts = generateAlertsForClient(client)
-                alerts.addAll(clientAlerts)
-            }
+            val alerts = alertLists.flatten()
 
             // Filter out dismissed alerts and sort by priority (CRITICAL first), then by daysSince (longest first)
             val sortedAlerts = alerts
@@ -184,8 +192,15 @@ class AlertRepository @Inject constructor(
 
     /**
      * Get scheduled workouts that were missed (scheduled date passed, not completed).
+     * NOTE: Currently disabled - workout_assignments table uses different column names.
+     * TODO: Fix when database schema is clarified.
      */
     private suspend fun getMissedScheduledWorkouts(clientId: String): List<MissedWorkout> {
+        // Skip this query for now - the workout_assignments table doesn't have user_id column
+        // This was causing slow loading due to repeated failing network calls
+        return emptyList()
+
+        /* Original code - disabled until schema is fixed:
         return try {
             val today = LocalDate.now()
 
@@ -246,6 +261,7 @@ class AlertRepository @Inject constructor(
             Log.e(TAG, "Error getting missed scheduled workouts for client $clientId", e)
             emptyList()
         }
+        */
     }
 
     /**
@@ -358,13 +374,19 @@ class AlertRepository @Inject constructor(
                 }
                 .decodeList<CoachClientView>()
 
-            // Generate wins for each client
-            val wins = mutableListOf<ClientWin>()
+            // Generate wins for each client IN PARALLEL for better performance
+            val winLists = clients.map { client ->
+                async {
+                    try {
+                        generateWinsForClient(client)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error generating wins for ${client.clientName}", e)
+                        emptyList()
+                    }
+                }
+            }.awaitAll()
 
-            for (client in clients) {
-                val clientWins = generateWinsForClient(client)
-                wins.addAll(clientWins)
-            }
+            val wins = winLists.flatten()
 
             // Mark celebrated wins and sort by createdAt (newest first)
             val sortedWins = wins
@@ -525,6 +547,7 @@ class AlertRepository @Inject constructor(
     /**
      * Get recent PRs for a client (last 48 hours).
      * Uses the client_personal_bests_v view which tracks PRs with previous best weight.
+     * NOTE: If the view doesn't exist, returns empty list gracefully.
      */
     private suspend fun getRecentPRsForClient(clientId: String): List<PersonalRecord> {
         return try {
@@ -563,7 +586,8 @@ class AlertRepository @Inject constructor(
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error getting recent PRs for client $clientId", e)
+            // The client_personal_bests_v view might not exist - this is OK, just return empty
+            Log.w(TAG, "Could not fetch PRs for client $clientId (view may not exist): ${e.message}")
             emptyList()
         }
     }

@@ -4,8 +4,8 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.prometheuscoach.mobile.data.model.ExerciseListItem
-import com.prometheuscoach.mobile.data.model.RoutineExerciseDetail
-import com.prometheuscoach.mobile.data.model.RoutineWithExercises
+import com.prometheuscoach.mobile.data.model.WorkoutExerciseDetail
+import com.prometheuscoach.mobile.data.model.WorkoutWithExercises
 import com.prometheuscoach.mobile.data.repository.WorkoutRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,7 +15,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class WorkoutDetailState(
-    val workout: RoutineWithExercises? = null,
+    val workout: WorkoutWithExercises? = null,
     val isLoading: Boolean = false,
     val error: String? = null,
     val isSaving: Boolean = false,
@@ -56,10 +56,10 @@ class WorkoutDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true, error = null)
 
-            workoutRepository.getRoutineWithExercises(workoutId)
-                .onSuccess { routineWithExercises ->
+            workoutRepository.getWorkoutWithExercises(workoutId)
+                .onSuccess { workoutWithExercises ->
                     _state.value = _state.value.copy(
-                        workout = routineWithExercises,
+                        workout = workoutWithExercises,
                         isLoading = false
                     )
                 }
@@ -86,7 +86,7 @@ class WorkoutDetailViewModel @Inject constructor(
 
         _state.value = _state.value.copy(isSaving = true, saveError = null)
 
-        return workoutRepository.updateRoutine(workoutId, name, description)
+        return workoutRepository.updateWorkout(workoutId, name, description)
             .onSuccess {
                 _state.value = _state.value.copy(isSaving = false)
                 loadWorkout(workoutId) // Refresh
@@ -107,9 +107,7 @@ class WorkoutDetailViewModel @Inject constructor(
     suspend fun addExercise(
         exerciseId: String,
         sets: Int = 3,
-        repsMin: Int? = null,
-        repsMax: Int? = null,
-        restSeconds: Int = 90,
+        targetReps: Int? = null,
         notes: String? = null
     ): Result<Unit> {
         val workoutId = currentWorkoutId ?: return Result.failure(Exception("No workout loaded"))
@@ -118,14 +116,12 @@ class WorkoutDetailViewModel @Inject constructor(
 
         _state.value = _state.value.copy(isSaving = true, saveError = null)
 
-        return workoutRepository.addExerciseToRoutine(
-            routineId = workoutId,
+        return workoutRepository.addExerciseToWorkout(
+            workoutId = workoutId,
             exerciseId = exerciseId,
             orderIndex = nextOrderIndex,
             sets = sets,
-            repsMin = repsMin,
-            repsMax = repsMax,
-            restSeconds = restSeconds,
+            targetReps = targetReps,
             notes = notes
         ).map { }
             .onSuccess {
@@ -143,12 +139,12 @@ class WorkoutDetailViewModel @Inject constructor(
     /**
      * Remove an exercise from the workout.
      */
-    suspend fun removeExercise(routineExerciseId: String): Result<Unit> {
+    suspend fun removeExercise(workoutExerciseId: String): Result<Unit> {
         val workoutId = currentWorkoutId ?: return Result.failure(Exception("No workout loaded"))
 
         _state.value = _state.value.copy(isSaving = true, saveError = null)
 
-        return workoutRepository.removeExerciseFromRoutine(routineExerciseId, workoutId)
+        return workoutRepository.removeExerciseFromWorkout(workoutExerciseId, workoutId)
             .onSuccess {
                 _state.value = _state.value.copy(isSaving = false)
                 loadWorkout(workoutId) // Refresh
@@ -165,23 +161,19 @@ class WorkoutDetailViewModel @Inject constructor(
      * Update exercise parameters.
      */
     suspend fun updateExercise(
-        routineExerciseId: String,
+        workoutExerciseId: String,
         sets: Int? = null,
-        repsMin: Int? = null,
-        repsMax: Int? = null,
-        restSeconds: Int? = null,
+        targetReps: Int? = null,
         notes: String? = null
     ): Result<Unit> {
         val workoutId = currentWorkoutId ?: return Result.failure(Exception("No workout loaded"))
 
         _state.value = _state.value.copy(isSaving = true, saveError = null)
 
-        return workoutRepository.updateRoutineExercise(
-            routineExerciseId = routineExerciseId,
+        return workoutRepository.updateWorkoutExercise(
+            workoutExerciseId = workoutExerciseId,
             sets = sets,
-            repsMin = repsMin,
-            repsMax = repsMax,
-            restSeconds = restSeconds,
+            targetReps = targetReps,
             notes = notes
         ).onSuccess {
             _state.value = _state.value.copy(isSaving = false)
@@ -197,9 +189,9 @@ class WorkoutDetailViewModel @Inject constructor(
     /**
      * Reorder exercises (after drag & drop).
      */
-    suspend fun reorderExercises(exercises: List<RoutineExerciseDetail>): Result<Unit> {
+    suspend fun reorderExercises(exercises: List<WorkoutExerciseDetail>): Result<Unit> {
         val workoutId = currentWorkoutId ?: return Result.failure(Exception("No workout loaded"))
-        val orderedIds = exercises.map { it.routineExerciseId }
+        val orderedIds = exercises.map { it.workoutExerciseId }
 
         _state.value = _state.value.copy(isSaving = true, saveError = null)
 

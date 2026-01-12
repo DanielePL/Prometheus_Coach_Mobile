@@ -13,18 +13,34 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.prometheuscoach.mobile.ui.components.BetaFeedbackSheet
+import com.prometheuscoach.mobile.ui.components.GradientBackground
 import com.prometheuscoach.mobile.ui.theme.PrometheusOrange
+import com.prometheuscoach.mobile.ui.theme.RadiusMedium
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onNavigateBack: () -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    viewModel: SettingsViewModel = hiltViewModel()
 ) {
+    val uiState by viewModel.uiState.collectAsState()
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var showFeedbackSheet by remember { mutableStateOf(false) }
+
+    // Handle feedback success
+    LaunchedEffect(uiState.feedbackSubmitSuccess) {
+        if (uiState.feedbackSubmitSuccess) {
+            showFeedbackSheet = false
+            viewModel.clearFeedbackSuccess()
+        }
+    }
 
     if (showLogoutDialog) {
         AlertDialog(
@@ -49,18 +65,43 @@ fun SettingsScreen(
         )
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Settings", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
-            )
+    // Beta Feedback Sheet
+    if (showFeedbackSheet) {
+        BetaFeedbackSheet(
+            screenName = "Settings",
+            isSubmitting = uiState.isSubmittingFeedback,
+            onSubmit = { feedbackType, message ->
+                viewModel.submitFeedback(feedbackType, message, "Settings")
+            },
+            onDismiss = { showFeedbackSheet = false }
+        )
+    }
+
+    // Error Snackbar
+    uiState.feedbackSubmitError?.let { error ->
+        LaunchedEffect(error) {
+            // Show error and clear it
+            viewModel.clearFeedbackError()
         }
-    ) { paddingValues ->
+    }
+
+    GradientBackground {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Settings", fontWeight = FontWeight.Bold) },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent
+                    )
+                )
+            },
+            containerColor = Color.Transparent
+        ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -138,6 +179,13 @@ fun SettingsScreen(
 
             SettingsCard {
                 SettingsItem(
+                    icon = Icons.Default.Feedback,
+                    title = "Beta Feedback",
+                    subtitle = "Report bugs, share ideas",
+                    onClick = { showFeedbackSheet = true }
+                )
+                HorizontalDivider()
+                SettingsItem(
                     icon = Icons.Default.Help,
                     title = "Help Center",
                     subtitle = "FAQs and support",
@@ -159,7 +207,7 @@ fun SettingsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { showLogoutDialog = true },
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(RadiusMedium),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
                 )
@@ -195,6 +243,7 @@ fun SettingsScreen(
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
         }
+        }
     }
 }
 
@@ -204,7 +253,7 @@ private fun SettingsCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(RadiusMedium)
     ) {
         Column(content = content)
     }

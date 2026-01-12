@@ -3,7 +3,7 @@ package com.prometheuscoach.mobile.ui.screens.workouts
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.prometheuscoach.mobile.data.model.ExerciseListItem
-import com.prometheuscoach.mobile.data.model.RoutineSummary
+import com.prometheuscoach.mobile.data.model.WorkoutSummary
 import com.prometheuscoach.mobile.data.repository.WorkoutRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 data class WorkoutsState(
-    val workouts: List<RoutineSummary> = emptyList(),
+    val workouts: List<WorkoutSummary> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
     val isCreating: Boolean = false,
@@ -49,7 +49,7 @@ class WorkoutsViewModel @Inject constructor(
         viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true, error = null)
 
-            workoutRepository.getRoutines()
+            workoutRepository.getWorkouts()
                 .onSuccess { workouts ->
                     _state.value = _state.value.copy(
                         workouts = workouts,
@@ -76,11 +76,11 @@ class WorkoutsViewModel @Inject constructor(
     suspend fun createWorkout(name: String, description: String?): Result<String> {
         _state.value = _state.value.copy(isCreating = true, createError = null)
 
-        return workoutRepository.createRoutine(name, description)
-            .map { routine ->
+        return workoutRepository.createWorkout(name, description)
+            .map { workout ->
                 _state.value = _state.value.copy(isCreating = false)
                 loadWorkouts() // Refresh list
-                routine.id
+                workout.id
             }
             .onFailure { error ->
                 _state.value = _state.value.copy(
@@ -94,7 +94,7 @@ class WorkoutsViewModel @Inject constructor(
      * Delete a workout.
      */
     suspend fun deleteWorkout(workoutId: String): Result<Unit> {
-        return workoutRepository.deleteRoutine(workoutId)
+        return workoutRepository.deleteWorkout(workoutId)
             .onSuccess {
                 loadWorkouts() // Refresh list
             }

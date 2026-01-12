@@ -4,7 +4,6 @@ import com.prometheuscoach.mobile.data.model.CalendarEvent
 import com.prometheuscoach.mobile.data.model.CalendarEventType
 import com.prometheuscoach.mobile.data.model.Client
 import com.prometheuscoach.mobile.data.model.CreateCalendarEventRequest
-import com.prometheuscoach.mobile.data.model.RoutineSummary
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Order
@@ -89,7 +88,7 @@ class CalendarRepository @Inject constructor(
         description: String? = null,
         startTime: String? = null,
         endTime: String? = null,
-        routineId: String? = null
+        workoutId: String? = null
     ): Result<CalendarEvent> {
         return try {
             val coachId = authRepository.getCurrentUserId()
@@ -104,7 +103,7 @@ class CalendarRepository @Inject constructor(
                 eventDate = eventDate.format(dateFormatter),
                 startTime = startTime,
                 endTime = endTime,
-                routineId = routineId
+                workoutId = workoutId
             )
 
             val event = supabaseClient.postgrest
@@ -190,20 +189,20 @@ class CalendarRepository @Inject constructor(
      */
     suspend fun scheduleWorkout(
         clientId: String,
-        routineId: String,
-        routineName: String,
+        workoutId: String,
+        workoutName: String,
         date: LocalDate,
         startTime: String? = null,
         notes: String? = null
     ): Result<CalendarEvent> {
         return createEvent(
-            title = routineName,
+            title = workoutName,
             eventType = CalendarEventType.WORKOUT,
             eventDate = date,
             clientId = clientId,
             description = notes,
             startTime = startTime,
-            routineId = routineId
+            workoutId = workoutId
         )
     }
 

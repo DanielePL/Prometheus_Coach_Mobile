@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "306401361348",
+    "project_id": "prometheusv1-c9310",
+    "storage_bucket": "prometheusv1-c9310.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:306401361348:android:df849ae8163ed47ddd3891",
+        "android_client_info": {
+          "package_name": "com.prometheuscoach.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC9Cvn8kQwSYzGNtFon01QUvBhvP7RxjVU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:306401361348:android:6a430977949b5847dd3891",
+        "android_client_info": {
+          "package_name": "prometheus.coach"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC9Cvn8kQwSYzGNtFon01QUvBhvP7RxjVU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,6 +1,7 @@
 package com.prometheuscoach.mobile.ui.screens.workouts
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -16,6 +17,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -24,8 +27,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.prometheuscoach.mobile.data.model.ExerciseListItem
-import com.prometheuscoach.mobile.data.model.RoutineExerciseDetail
-import com.prometheuscoach.mobile.ui.theme.PrometheusOrange
+import com.prometheuscoach.mobile.data.model.WorkoutExerciseDetail
+import com.prometheuscoach.mobile.ui.components.GradientBackground
+import com.prometheuscoach.mobile.ui.theme.*
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,59 +45,63 @@ fun WorkoutDetailScreen(
 
     var showAddExerciseSheet by remember { mutableStateOf(false) }
     var showEditWorkoutDialog by remember { mutableStateOf(false) }
-    var exerciseToDelete by remember { mutableStateOf<RoutineExerciseDetail?>(null) }
-    var exerciseToEdit by remember { mutableStateOf<RoutineExerciseDetail?>(null) }
+    var exerciseToDelete by remember { mutableStateOf<WorkoutExerciseDetail?>(null) }
+    var exerciseToEdit by remember { mutableStateOf<WorkoutExerciseDetail?>(null) }
 
     LaunchedEffect(workoutId) {
         viewModel.loadWorkout(workoutId)
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            state.workout?.name ?: "Workout",
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        state.workout?.let { workout ->
+    GradientBackground {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Column {
                             Text(
-                                "${workout.exercises.size} exercise${if (workout.exercises.size != 1) "s" else ""}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                state.workout?.name ?: "Workout",
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                color = Color.White
                             )
+                            state.workout?.let { workout ->
+                                Text(
+                                    "${workout.exercises.size} exercise${if (workout.exercises.size != 1) "s" else ""}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = TextSecondary
+                                )
+                            }
                         }
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { showEditWorkoutDialog = true }) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit Workout")
-                    }
-                }
-            )
-        },
-        floatingActionButton = {
-            if (state.workout != null) {
-                FloatingActionButton(
-                    onClick = {
-                        viewModel.loadExercisesForPicker()
-                        showAddExerciseSheet = true
                     },
-                    containerColor = PrometheusOrange
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add Exercise")
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { showEditWorkoutDialog = true }) {
+                            Icon(Icons.Default.Edit, contentDescription = "Edit Workout", tint = Color.White)
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                )
+            },
+            floatingActionButton = {
+                if (state.workout != null) {
+                    FloatingActionButton(
+                        onClick = {
+                            viewModel.loadExercisesForPicker()
+                            showAddExerciseSheet = true
+                        },
+                        containerColor = PrometheusOrange
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "Add Exercise", tint = Color.White)
+                    }
                 }
             }
-        }
-    ) { paddingValues ->
+        ) { paddingValues ->
         when {
             state.isLoading -> {
                 Box(
@@ -183,17 +191,25 @@ fun WorkoutDetailScreen(
                         if (workout.description != null) {
                             item {
                                 Card(
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .shadow(
+                                            elevation = 8.dp,
+                                            shape = RoundedCornerShape(12.dp),
+                                            ambientColor = PrometheusOrange.copy(alpha = 0.2f),
+                                            spotColor = PrometheusOrange.copy(alpha = 0.2f)
+                                        ),
                                     shape = RoundedCornerShape(12.dp),
                                     colors = CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                                    )
+                                        containerColor = DarkSurface.copy(alpha = 0.8f)
+                                    ),
+                                    border = BorderStroke(1.dp, PrometheusOrange.copy(alpha = 0.3f))
                                 ) {
                                     Text(
                                         workout.description,
                                         modifier = Modifier.padding(16.dp),
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = TextSecondary
                                     )
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
@@ -217,6 +233,7 @@ fun WorkoutDetailScreen(
                     }
                 }
             }
+        }
         }
     }
 
@@ -274,7 +291,7 @@ fun WorkoutDetailScreen(
                 TextButton(
                     onClick = {
                         scope.launch {
-                            viewModel.removeExercise(exercise.routineExerciseId)
+                            viewModel.removeExercise(exercise.workoutExerciseId)
                             exerciseToDelete = null
                         }
                     },
@@ -296,18 +313,16 @@ fun WorkoutDetailScreen(
         SetInputDialog(
             exerciseName = exercise.exerciseTitle,
             initialSets = exercise.sets,
-            initialRepsMin = exercise.repsMin,
-            initialRepsMax = exercise.repsMax,
-            initialRestSeconds = exercise.restSeconds,
+            initialRepsMin = exercise.targetReps,
+            initialRepsMax = exercise.targetReps,
+            initialRestSeconds = 90,
             onDismiss = { exerciseToEdit = null },
-            onConfirm = { sets, repsMin, repsMax, restSeconds ->
+            onConfirm = { sets, repsMin, _, _ ->
                 scope.launch {
                     viewModel.updateExercise(
-                        routineExerciseId = exercise.routineExerciseId,
+                        workoutExerciseId = exercise.workoutExerciseId,
                         sets = sets,
-                        repsMin = repsMin,
-                        repsMax = repsMax,
-                        restSeconds = restSeconds
+                        targetReps = repsMin
                     ).onSuccess {
                         exerciseToEdit = null
                     }
@@ -320,7 +335,7 @@ fun WorkoutDetailScreen(
 
 @Composable
 private fun ExerciseCard(
-    exercise: RoutineExerciseDetail,
+    exercise: WorkoutExerciseDetail,
     index: Int,
     onClick: () -> Unit,
     onDelete: () -> Unit
@@ -328,12 +343,18 @@ private fun ExerciseCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .shadow(
+                elevation = 8.dp,
+                shape = RoundedCornerShape(12.dp),
+                ambientColor = PrometheusOrange.copy(alpha = 0.3f),
+                spotColor = PrometheusOrange.copy(alpha = 0.3f)
+            )
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.Black
+            containerColor = DarkSurface.copy(alpha = 0.8f)
         ),
-        border = BorderStroke(1.dp, PrometheusOrange)
+        border = BorderStroke(1.dp, PrometheusOrange.copy(alpha = 0.5f))
     ) {
         Row(
             modifier = Modifier
@@ -413,22 +434,13 @@ private fun ExerciseCard(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // Rest time
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    ExerciseChip(
-                        icon = Icons.Default.Timer,
-                        text = exercise.restDisplay
+                if (exercise.exerciseCategory != null) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        exercise.exerciseCategory,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = PrometheusOrange
                     )
-                    if (exercise.exerciseCategory != null) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            exercise.exerciseCategory,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = PrometheusOrange
-                        )
-                    }
                 }
             }
 

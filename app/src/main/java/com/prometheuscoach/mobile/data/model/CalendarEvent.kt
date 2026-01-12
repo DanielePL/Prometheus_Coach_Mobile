@@ -28,10 +28,10 @@ data class CalendarEvent(
     val startTime: String? = null,
     @SerialName("end_time")
     val endTime: String? = null,
-    @SerialName("routine_id")
-    val routineId: String? = null,
-    @SerialName("routine_name")
-    val routineName: String? = null,
+    @SerialName("workout_id")
+    val workoutId: String? = null,
+    @SerialName("workout_name")
+    val workoutName: String? = null,
     val status: String = "scheduled",  // 'scheduled', 'completed', 'cancelled'
     @SerialName("created_at")
     val createdAt: String? = null
@@ -56,8 +56,8 @@ data class CreateCalendarEventRequest(
     val startTime: String? = null,
     @SerialName("end_time")
     val endTime: String? = null,
-    @SerialName("routine_id")
-    val routineId: String? = null
+    @SerialName("workout_id")
+    val workoutId: String? = null
 )
 
 /**

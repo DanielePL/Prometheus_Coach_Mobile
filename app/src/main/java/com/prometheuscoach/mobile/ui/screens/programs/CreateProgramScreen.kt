@@ -19,6 +19,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.prometheuscoach.mobile.ui.components.GradientBackground
 import com.prometheuscoach.mobile.ui.theme.*
 import kotlinx.coroutines.launch
 
@@ -47,48 +48,44 @@ fun CreateProgramScreen(
             (durationWeeks.toIntOrNull() ?: 0) > 0 &&
             (workoutsPerWeek.toIntOrNull() ?: 0) in 1..7
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Create Program", color = Color.White) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Close",
-                            tint = Color.White
-                        )
-                    }
-                },
-                actions = {
-                    TextButton(
-                        onClick = { showSaveDialog = true },
-                        enabled = isFormValid && !state.isCreating
-                    ) {
-                        Text(
-                            text = "SAVE",
-                            color = if (isFormValid) PrometheusOrange else Gray500,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = DarkSurface
-                )
-            )
-        },
-        containerColor = Color.Transparent
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(DarkBackground, DarkBackgroundSecondary)
+    GradientBackground {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Create Program", color = Color.White, fontWeight = FontWeight.Bold) },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close",
+                                tint = Color.White
+                            )
+                        }
+                    },
+                    actions = {
+                        TextButton(
+                            onClick = { showSaveDialog = true },
+                            enabled = isFormValid && !state.isCreating
+                        ) {
+                            Text(
+                                text = "SAVE",
+                                color = if (isFormValid) PrometheusOrange else Gray500,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent
                     )
                 )
-                .padding(paddingValues)
-        ) {
+            },
+            containerColor = Color.Transparent
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(16.dp),
@@ -265,7 +262,7 @@ fun CreateProgramScreen(
                             containerColor = PrometheusOrange.copy(alpha = 0.1f)
                         ),
                         border = BorderStroke(1.dp, PrometheusOrange.copy(alpha = 0.3f)),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(RadiusMedium)
                     ) {
                         Row(
                             modifier = Modifier.padding(16.dp),
@@ -290,6 +287,7 @@ fun CreateProgramScreen(
 
                 item { Spacer(Modifier.height(80.dp)) }
             }
+        }
         }
     }
 
@@ -422,7 +420,7 @@ private fun FormCard(content: @Composable ColumnScope.() -> Unit) {
             containerColor = DarkSurface.copy(alpha = 0.6f)
         ),
         border = BorderStroke(1.5.dp, PrometheusOrange.copy(alpha = 0.3f)),
-        shape = RoundedCornerShape(20.dp)
+        shape = RoundedCornerShape(RadiusMedium)
     ) {
         Column(
             modifier = Modifier.padding(20.dp),

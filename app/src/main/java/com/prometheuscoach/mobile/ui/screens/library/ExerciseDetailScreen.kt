@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.prometheuscoach.mobile.data.model.Exercise
+import com.prometheuscoach.mobile.data.model.TechniqueSection
+import com.prometheuscoach.mobile.ui.components.GradientBackground
 import com.prometheuscoach.mobile.ui.theme.*
 
 // ═══════════════════════════════════════════════════════════════
@@ -47,15 +49,7 @@ fun ExerciseDetailScreen(
         viewModel.loadExercise(exerciseId)
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(DarkBackground, DarkBackgroundSecondary)
-                )
-            )
-    ) {
+    GradientBackground {
         when {
             state.isLoading -> {
                 Box(
@@ -159,6 +153,11 @@ private fun ExerciseDetailContent(
                 TutorialSection(exercise.tutorial!!)
             }
 
+            // Technique Guide Section
+            if (!exercise.techniqueSections.isNullOrEmpty()) {
+                TechniqueGuideSections(exercise.techniqueSections!!)
+            }
+
             // Notes Section
             if (!exercise.notes.isNullOrEmpty()) {
                 NotesSection(exercise.notes!!)
@@ -243,7 +242,7 @@ private fun MeasurementCapabilitiesSection() {
 
             // Power Score
             MeasurementCapabilityCard(
-                icon = "⚡",
+                icon = Icons.Default.Bolt,
                 title = "Power Score (VBT)",
                 description = "Measures bar velocity and explosive power output",
                 color = vbtPowerColor
@@ -251,7 +250,7 @@ private fun MeasurementCapabilitiesSection() {
 
             // Technique Score
             MeasurementCapabilityCard(
-                icon = "✓",
+                icon = Icons.Default.CheckCircle,
                 title = "Technique Score",
                 description = "Analyzes bar path and movement quality",
                 color = vbtTechniqueColor
@@ -287,7 +286,7 @@ private fun MeasurementCapabilitiesSection() {
 
 @Composable
 private fun MeasurementCapabilityCard(
-    icon: String,
+    icon: ImageVector,
     title: String,
     description: String,
     color: Color
@@ -307,11 +306,11 @@ private fun MeasurementCapabilityCard(
                 modifier = Modifier.size(40.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = icon,
-                    color = color,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = color,
+                    modifier = Modifier.size(24.dp)
                 )
             }
         }
@@ -606,6 +605,91 @@ private fun InstructionCard(number: Int, text: String) {
                 lineHeight = 20.sp,
                 modifier = Modifier.weight(1f)
             )
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TECHNIQUE GUIDE SECTIONS
+// ═══════════════════════════════════════════════════════════════
+
+@Composable
+private fun TechniqueGuideSections(sections: List<TechniqueSection>) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        // Header
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.School,
+                contentDescription = null,
+                tint = vbtTechniqueColor,
+                modifier = Modifier.size(24.dp)
+            )
+            Text(
+                text = "TECHNIQUE GUIDE",
+                color = vbtTechniqueColor,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                letterSpacing = 1.sp
+            )
+        }
+
+        // Each technique section as a card
+        sections.forEach { section ->
+            TechniqueSectionCard(section)
+        }
+    }
+}
+
+@Composable
+private fun TechniqueSectionCard(section: TechniqueSection) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = DarkSurface),
+        shape = RoundedCornerShape(12.dp),
+        border = BorderStroke(1.dp, vbtTechniqueColor.copy(alpha = 0.3f))
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Section Title
+            if (section.title.isNotBlank()) {
+                Text(
+                    text = section.title,
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            // Bullet Points
+            section.bullets.forEach { bullet ->
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // Bullet point indicator
+                    Surface(
+                        modifier = Modifier
+                            .padding(top = 6.dp)
+                            .size(6.dp),
+                        shape = RoundedCornerShape(3.dp),
+                        color = vbtTechniqueColor
+                    ) {}
+
+                    // Bullet text
+                    Text(
+                        text = bullet,
+                        color = Gray400,
+                        fontSize = 14.sp,
+                        lineHeight = 20.sp,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
         }
     }
 }

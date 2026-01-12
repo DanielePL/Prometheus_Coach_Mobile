@@ -15,7 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.prometheuscoach.mobile.data.model.RoutineSummary
+import com.prometheuscoach.mobile.data.model.WorkoutSummary
 import com.prometheuscoach.mobile.ui.theme.PrometheusOrange
 
 /**
@@ -25,7 +25,7 @@ import com.prometheuscoach.mobile.ui.theme.PrometheusOrange
 @Composable
 fun AssignWorkoutSheet(
     clientName: String,
-    workouts: List<RoutineSummary>,
+    workouts: List<WorkoutSummary>,
     isLoading: Boolean,
     isAssigning: Boolean,
     error: String?,
@@ -34,7 +34,7 @@ fun AssignWorkoutSheet(
     onRetry: () -> Unit,
     onCreateWorkout: () -> Unit = {}
 ) {
-    var selectedWorkout by remember { mutableStateOf<RoutineSummary?>(null) }
+    var selectedWorkout by remember { mutableStateOf<WorkoutSummary?>(null) }
     var notes by remember { mutableStateOf("") }
     var showConfirmation by remember { mutableStateOf(false) }
 
@@ -204,7 +204,7 @@ fun AssignWorkoutSheet(
 
 @Composable
 private fun WorkoutSelectionCard(
-    workout: RoutineSummary,
+    workout: WorkoutSummary,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {

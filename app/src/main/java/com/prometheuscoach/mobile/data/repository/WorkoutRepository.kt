@@ -14,7 +14,8 @@ import javax.inject.Singleton
 
 /**
  * Repository for workout operations.
- * Uses coach_workouts_v view for combined workout + exercise data.
+ * Uses workout_templates, workout_template_exercises, and exercise_sets tables.
+ * Compatible with Prometheus V1 mobile app schema.
  *
  * @see Prometheus Developer Guidelines v1.0.0
  */
@@ -32,7 +33,7 @@ class WorkoutRepository @Inject constructor(
 
     /**
      * Get all workouts for the current coach (summary only, no exercises).
-     * Uses workouts table directly for list view.
+     * Uses workout_templates table (V1 compatible).
      * Results are cached for 5 minutes.
      */
     suspend fun getWorkouts(forceRefresh: Boolean = false): Result<List<WorkoutSummary>> {
@@ -48,37 +49,37 @@ class WorkoutRepository @Inject constructor(
                 }
             }
 
-            // Get workouts
-            val workouts = supabaseClient.postgrest
-                .from("workouts")
+            // Get workout templates for this coach (user_id = coach_id in coach context)
+            val templates = supabaseClient.postgrest
+                .from("workout_templates")
                 .select {
-                    filter { eq("coach_id", coachId) }
+                    filter { eq("user_id", coachId) }
                     order("created_at", Order.DESCENDING)
                 }
-                .decodeList<Workout>()
+                .decodeList<WorkoutTemplateDto>()
 
-            // Get exercise counts per workout via the view
-            val viewRows = supabaseClient.postgrest
-                .from("coach_workouts_v")
-                .select {
-                    filter { eq("coach_id", coachId) }
-                }
-                .decodeList<CoachWorkoutViewRow>()
+            // Get exercise counts per workout
+            val templateIds = templates.map { it.id }
+            val exerciseCounts = if (templateIds.isNotEmpty()) {
+                val allExercises = supabaseClient.postgrest
+                    .from("workout_template_exercises")
+                    .select {
+                        filter { isIn("workout_template_id", templateIds) }
+                    }
+                    .decodeList<WorkoutTemplateExerciseDto>()
+                allExercises.groupBy { it.workoutTemplateId }.mapValues { it.value.size }
+            } else {
+                emptyMap()
+            }
 
-            // Count exercises per workout
-            val exerciseCounts = viewRows
-                .filter { it.workoutExerciseId != null }
-                .groupBy { it.workoutId }
-                .mapValues { it.value.size }
-
-            val summaries = workouts.map { workout ->
+            val summaries = templates.map { template ->
                 WorkoutSummary(
-                    id = workout.id,
-                    name = workout.name,
-                    description = workout.description,
-                    exerciseCount = exerciseCounts[workout.id] ?: 0,
-                    createdAt = workout.createdAt,
-                    updatedAt = workout.updatedAt
+                    id = template.id,
+                    name = template.name,
+                    description = template.description,
+                    exerciseCount = exerciseCounts[template.id] ?: 0,
+                    createdAt = template.createdAt,
+                    updatedAt = template.updatedAt
                 )
             }
 
@@ -101,59 +102,103 @@ class WorkoutRepository @Inject constructor(
     }
 
     /**
-     * Get workout details with all exercises.
-     * Uses coach_workouts_v view for combined data.
+     * Get workout details with all exercises and sets.
+     * Uses workout_templates + workout_template_exercises + exercise_sets (V1 compatible).
      */
     suspend fun getWorkoutWithExercises(workoutId: String): Result<WorkoutWithExercises> {
         return try {
             val coachId = authRepository.getCurrentUserId()
                 ?: return Result.failure(Exception("Not authenticated"))
 
-            val viewRows = supabaseClient.postgrest
-                .from("coach_workouts_v")
+            // 1. Load template metadata
+            val template = supabaseClient.postgrest
+                .from("workout_templates")
                 .select {
-                    filter {
-                        eq("workout_id", workoutId)
-                        eq("coach_id", coachId)
-                    }
+                    filter { eq("id", workoutId) }
+                }
+                .decodeSingleOrNull<WorkoutTemplateDto>()
+                ?: return Result.failure(Exception("Workout not found"))
+
+            // 2. Load exercises for this template
+            val templateExercises = supabaseClient.postgrest
+                .from("workout_template_exercises")
+                .select {
+                    filter { eq("workout_template_id", workoutId) }
                     order("order_index", Order.ASCENDING)
                 }
-                .decodeList<CoachWorkoutViewRow>()
+                .decodeList<WorkoutTemplateExerciseDto>()
 
-            if (viewRows.isEmpty()) {
-                return Result.failure(Exception("Workout not found"))
+            // 3. Load exercise details from exercises_new
+            val exerciseIds = templateExercises.map { it.exerciseId }.distinct()
+            val exerciseDetails = if (exerciseIds.isNotEmpty()) {
+                supabaseClient.postgrest
+                    .from("exercises_new")
+                    .select {
+                        filter { isIn("id", exerciseIds) }
+                    }
+                    .decodeList<ExerciseDetailDto>()
+                    .associateBy { it.id }
+            } else {
+                emptyMap()
             }
 
-            // First row contains workout header info
-            val firstRow = viewRows.first()
+            // 4. Load sets for all exercises
+            val workoutExerciseIds = templateExercises.map { it.id }
+            val allSets = if (workoutExerciseIds.isNotEmpty()) {
+                supabaseClient.postgrest
+                    .from("exercise_sets")
+                    .select {
+                        filter { isIn("workout_exercise_id", workoutExerciseIds) }
+                        order("set_number", Order.ASCENDING)
+                    }
+                    .decodeList<ExerciseSetDto>()
+                    .groupBy { it.workoutExerciseId }
+            } else {
+                emptyMap()
+            }
 
-            // Map exercises (filter out null exercise entries for empty workouts)
-            val exercises = viewRows
-                .filter { it.workoutExerciseId != null && it.exerciseId != null }
-                .map { row ->
-                    WorkoutExerciseDetail(
-                        workoutExerciseId = row.workoutExerciseId!!,
-                        exerciseId = row.exerciseId!!,
-                        orderIndex = row.orderIndex ?: 0,
-                        sets = row.sets ?: 3,
-                        targetReps = row.targetReps,
-                        notes = row.workoutExerciseNotes,
-                        exerciseTitle = row.exerciseTitle ?: "Unknown",
-                        exerciseCategory = row.exerciseCategory,
-                        exerciseThumbnailUrl = row.exerciseThumbnailUrl,
-                        exerciseVideoUrl = row.exerciseVideoUrl,
-                        primaryMuscles = row.primaryMuscles,
-                        secondaryMuscles = row.secondaryMuscles
-                    )
+            // 5. Build exercise details
+            val exercises = templateExercises.mapNotNull { exercise ->
+                val details = exerciseDetails[exercise.exerciseId]
+                if (details == null) {
+                    Log.w(TAG, "Exercise ${exercise.exerciseId} not found, skipping")
+                    return@mapNotNull null
                 }
 
+                val sets = allSets[exercise.id] ?: emptyList()
+
+                WorkoutExerciseDetail(
+                    workoutExerciseId = exercise.id,
+                    exerciseId = exercise.exerciseId,
+                    orderIndex = exercise.orderIndex,
+                    sets = sets.size.coerceAtLeast(1),
+                    targetReps = sets.firstOrNull()?.targetReps,
+                    notes = exercise.notes,
+                    exerciseTitle = details.name,
+                    exerciseCategory = details.category,
+                    exerciseThumbnailUrl = null,
+                    exerciseVideoUrl = details.videoUrl,
+                    primaryMuscles = details.mainMuscle,
+                    secondaryMuscles = details.secondaryMuscles?.joinToString(", "),
+                    exerciseSets = sets.map { set ->
+                        ExerciseSetInfo(
+                            id = set.id,
+                            setNumber = set.setNumber,
+                            targetReps = set.targetReps,
+                            targetWeight = set.targetWeight,
+                            restSeconds = set.restSeconds
+                        )
+                    }
+                )
+            }
+
             val workout = WorkoutWithExercises(
-                id = firstRow.workoutId,
-                coachId = firstRow.coachId,
-                name = firstRow.workoutName,
-                description = firstRow.workoutDescription,
-                createdAt = firstRow.workoutCreatedAt,
-                updatedAt = firstRow.workoutUpdatedAt,
+                id = template.id,
+                coachId = template.userId ?: coachId,
+                name = template.name,
+                description = template.description,
+                createdAt = template.createdAt,
+                updatedAt = template.updatedAt,
                 exercises = exercises
             )
 
@@ -164,6 +209,64 @@ class WorkoutRepository @Inject constructor(
             Result.failure(e)
         }
     }
+
+    // ==================== V1-COMPATIBLE DTOs ====================
+
+    @Serializable
+    private data class WorkoutTemplateDto(
+        val id: String,
+        val name: String,
+        val description: String? = null,
+        @SerialName("user_id")
+        val userId: String? = null,
+        @SerialName("created_at")
+        val createdAt: String,
+        @SerialName("updated_at")
+        val updatedAt: String,
+        val sports: List<String>? = null
+    )
+
+    @Serializable
+    private data class WorkoutTemplateExerciseDto(
+        val id: String,
+        @SerialName("workout_template_id")
+        val workoutTemplateId: String,
+        @SerialName("exercise_id")
+        val exerciseId: String,
+        @SerialName("order_index")
+        val orderIndex: Int = 0,
+        val notes: String? = null,
+        @SerialName("created_at")
+        val createdAt: String? = null
+    )
+
+    @Serializable
+    private data class ExerciseDetailDto(
+        val id: String,
+        val name: String,
+        val category: String? = null,
+        @SerialName("main_muscle_group")
+        val mainMuscle: String? = null,
+        @SerialName("secondary_muscle_groups")
+        val secondaryMuscles: List<String>? = null,
+        @SerialName("video_url")
+        val videoUrl: String? = null
+    )
+
+    @Serializable
+    private data class ExerciseSetDto(
+        val id: String,
+        @SerialName("workout_exercise_id")
+        val workoutExerciseId: String,
+        @SerialName("set_number")
+        val setNumber: Int,
+        @SerialName("target_reps")
+        val targetReps: Int,
+        @SerialName("target_weight")
+        val targetWeight: Double,
+        @SerialName("rest_seconds")
+        val restSeconds: Int
+    )
 
     /**
      * Search exercises for picker.
@@ -221,30 +324,49 @@ class WorkoutRepository @Inject constructor(
      */
     suspend fun getExerciseById(exerciseId: String): Result<Exercise> = getExercise(exerciseId)
 
-    // ==================== WRITE OPERATIONS ====================
+    // ==================== WRITE OPERATIONS (V1 Compatible) ====================
 
     /**
      * Create a new workout.
+     * Uses workout_templates table (V1 compatible).
      */
     suspend fun createWorkout(name: String, description: String?): Result<Workout> {
         return try {
             val coachId = authRepository.getCurrentUserId()
                 ?: return Result.failure(Exception("Not authenticated"))
 
-            val request = CreateWorkoutRequest(
-                coachId = coachId,
-                name = name,
-                description = description
+            @Serializable
+            data class CreateTemplateRequest(
+                val name: String,
+                val description: String? = null,
+                @SerialName("user_id")
+                val userId: String
             )
 
-            val workout = supabaseClient.postgrest
-                .from("workouts")
+            val request = CreateTemplateRequest(
+                name = name,
+                description = description,
+                userId = coachId
+            )
+
+            val template = supabaseClient.postgrest
+                .from("workout_templates")
                 .insert(request) {
                     select()
                 }
-                .decodeSingle<Workout>()
+                .decodeSingle<WorkoutTemplateDto>()
 
-            Log.d(TAG, "Created workout: ${workout.id}")
+            Log.d(TAG, "Created workout: ${template.id}")
+
+            // Convert to Workout model for compatibility
+            val workout = Workout(
+                id = template.id,
+                coachId = coachId,
+                name = template.name,
+                description = template.description,
+                createdAt = template.createdAt,
+                updatedAt = template.updatedAt
+            )
             Result.success(workout)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to create workout", e)
@@ -254,11 +376,12 @@ class WorkoutRepository @Inject constructor(
 
     /**
      * Update workout name/description.
+     * Uses workout_templates table (V1 compatible).
      */
     suspend fun updateWorkout(workoutId: String, name: String, description: String?): Result<Unit> {
         return try {
             supabaseClient.postgrest
-                .from("workouts")
+                .from("workout_templates")
                 .update(
                     mapOf(
                         "name" to name,
@@ -279,12 +402,13 @@ class WorkoutRepository @Inject constructor(
 
     /**
      * Delete a workout.
-     * Note: This will cascade delete workout_exercises due to FK.
+     * Uses workout_templates table (V1 compatible).
+     * Note: This will cascade delete workout_template_exercises due to FK.
      */
     suspend fun deleteWorkout(workoutId: String): Result<Unit> {
         return try {
             supabaseClient.postgrest
-                .from("workouts")
+                .from("workout_templates")
                 .delete {
                     filter { eq("id", workoutId) }
                 }
@@ -298,7 +422,8 @@ class WorkoutRepository @Inject constructor(
     }
 
     /**
-     * Add an exercise to a workout.
+     * Add an exercise to a workout with default sets.
+     * Uses workout_template_exercises + exercise_sets tables (V1 compatible).
      */
     suspend fun addExerciseToWorkout(
         workoutId: String,
@@ -312,26 +437,80 @@ class WorkoutRepository @Inject constructor(
             // Validate
             require(sets > 0) { "Sets must be greater than 0" }
 
-            val request = AddWorkoutExerciseRequest(
+            @Serializable
+            data class CreateTemplateExerciseRequest(
+                @SerialName("workout_template_id")
+                val workoutTemplateId: String,
+                @SerialName("exercise_id")
+                val exerciseId: String,
+                @SerialName("order_index")
+                val orderIndex: Int,
+                val notes: String? = null
+            )
+
+            val request = CreateTemplateExerciseRequest(
+                workoutTemplateId = workoutId,
+                exerciseId = exerciseId,
+                orderIndex = orderIndex,
+                notes = notes
+            )
+
+            val createdExercise = supabaseClient.postgrest
+                .from("workout_template_exercises")
+                .insert(request) {
+                    select()
+                }
+                .decodeSingle<WorkoutTemplateExerciseDto>()
+
+            // Create default sets in exercise_sets table
+            val defaultReps = targetReps ?: 10
+            val defaultWeight = 0.0
+            val defaultRest = 90
+
+            for (setNumber in 1..sets) {
+                @Serializable
+                data class CreateSetRequest(
+                    @SerialName("workout_exercise_id")
+                    val workoutExerciseId: String,
+                    @SerialName("set_number")
+                    val setNumber: Int,
+                    @SerialName("target_reps")
+                    val targetReps: Int,
+                    @SerialName("target_weight")
+                    val targetWeight: Double,
+                    @SerialName("rest_seconds")
+                    val restSeconds: Int
+                )
+
+                val setRequest = CreateSetRequest(
+                    workoutExerciseId = createdExercise.id,
+                    setNumber = setNumber,
+                    targetReps = defaultReps,
+                    targetWeight = defaultWeight,
+                    restSeconds = defaultRest
+                )
+
+                supabaseClient.postgrest
+                    .from("exercise_sets")
+                    .insert(setRequest)
+            }
+
+            // Update workout's updated_at timestamp
+            updateWorkoutTimestamp(workoutId)
+
+            Log.d(TAG, "Added exercise to workout: ${createdExercise.id} with $sets sets")
+
+            // Convert to WorkoutExercise for compatibility
+            val workoutExercise = WorkoutExercise(
+                id = createdExercise.id,
                 workoutId = workoutId,
                 exerciseId = exerciseId,
                 orderIndex = orderIndex,
                 sets = sets,
                 targetReps = targetReps,
-                notes = notes
+                notes = notes,
+                createdAt = createdExercise.createdAt
             )
-
-            val workoutExercise = supabaseClient.postgrest
-                .from("workout_exercises")
-                .insert(request) {
-                    select()
-                }
-                .decodeSingle<WorkoutExercise>()
-
-            // Update workout's updated_at timestamp
-            updateWorkoutTimestamp(workoutId)
-
-            Log.d(TAG, "Added exercise to workout: ${workoutExercise.id}")
             Result.success(workoutExercise)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to add exercise to workout", e)
@@ -340,7 +519,8 @@ class WorkoutRepository @Inject constructor(
     }
 
     /**
-     * Update exercise parameters in a workout.
+     * Update exercise sets in a workout.
+     * Updates the exercise_sets table (V1 compatible).
      */
     suspend fun updateWorkoutExercise(
         workoutExerciseId: String,
@@ -349,23 +529,83 @@ class WorkoutRepository @Inject constructor(
         notes: String? = null
     ): Result<Unit> {
         return try {
-            val updates = mutableMapOf<String, Any?>()
-            sets?.let {
-                require(it > 0) { "Sets must be greater than 0" }
-                updates["sets"] = it
-            }
-            targetReps?.let { updates["target_reps"] = it }
-            notes?.let { updates["notes"] = it }
-
-            if (updates.isEmpty()) {
-                return Result.success(Unit)
+            // Update notes on the workout_template_exercises if provided
+            if (notes != null) {
+                supabaseClient.postgrest
+                    .from("workout_template_exercises")
+                    .update(mapOf("notes" to notes)) {
+                        filter { eq("id", workoutExerciseId) }
+                    }
             }
 
-            supabaseClient.postgrest
-                .from("workout_exercises")
-                .update(updates) {
-                    filter { eq("id", workoutExerciseId) }
+            // If sets count changed, we need to add/remove sets
+            if (sets != null) {
+                require(sets > 0) { "Sets must be greater than 0" }
+
+                // Get current sets
+                val currentSets = supabaseClient.postgrest
+                    .from("exercise_sets")
+                    .select {
+                        filter { eq("workout_exercise_id", workoutExerciseId) }
+                        order("set_number", Order.ASCENDING)
+                    }
+                    .decodeList<ExerciseSetDto>()
+
+                val currentCount = currentSets.size
+
+                if (sets > currentCount) {
+                    // Add more sets
+                    val lastSet = currentSets.lastOrNull()
+                    val baseReps = targetReps ?: lastSet?.targetReps ?: 10
+                    val baseWeight = lastSet?.targetWeight ?: 0.0
+                    val baseRest = lastSet?.restSeconds ?: 90
+
+                    for (setNumber in (currentCount + 1)..sets) {
+                        @Serializable
+                        data class CreateSetRequest(
+                            @SerialName("workout_exercise_id")
+                            val workoutExerciseId: String,
+                            @SerialName("set_number")
+                            val setNumber: Int,
+                            @SerialName("target_reps")
+                            val targetReps: Int,
+                            @SerialName("target_weight")
+                            val targetWeight: Double,
+                            @SerialName("rest_seconds")
+                            val restSeconds: Int
+                        )
+
+                        supabaseClient.postgrest
+                            .from("exercise_sets")
+                            .insert(CreateSetRequest(
+                                workoutExerciseId = workoutExerciseId,
+                                setNumber = setNumber,
+                                targetReps = baseReps,
+                                targetWeight = baseWeight,
+                                restSeconds = baseRest
+                            ))
+                    }
+                } else if (sets < currentCount) {
+                    // Remove excess sets
+                    val setsToRemove = currentSets.drop(sets)
+                    setsToRemove.forEach { set ->
+                        supabaseClient.postgrest
+                            .from("exercise_sets")
+                            .delete {
+                                filter { eq("id", set.id) }
+                            }
+                    }
                 }
+            }
+
+            // Update target reps on all sets if provided
+            if (targetReps != null) {
+                supabaseClient.postgrest
+                    .from("exercise_sets")
+                    .update(mapOf("target_reps" to targetReps)) {
+                        filter { eq("workout_exercise_id", workoutExerciseId) }
+                    }
+            }
 
             Log.d(TAG, "Updated workout exercise: $workoutExerciseId")
             Result.success(Unit)
@@ -377,11 +617,13 @@ class WorkoutRepository @Inject constructor(
 
     /**
      * Remove an exercise from a workout.
+     * Uses workout_template_exercises table (V1 compatible).
+     * exercise_sets are cascade deleted by FK.
      */
     suspend fun removeExerciseFromWorkout(workoutExerciseId: String, workoutId: String): Result<Unit> {
         return try {
             supabaseClient.postgrest
-                .from("workout_exercises")
+                .from("workout_template_exercises")
                 .delete {
                     filter { eq("id", workoutExerciseId) }
                 }
@@ -402,13 +644,13 @@ class WorkoutRepository @Inject constructor(
 
     /**
      * Reorder exercises in a workout.
-     * Takes a list of workout_exercise_ids in the new order.
+     * Uses workout_template_exercises table (V1 compatible).
      */
     suspend fun reorderExercises(workoutId: String, orderedIds: List<String>): Result<Unit> {
         return try {
             orderedIds.forEachIndexed { index, workoutExerciseId ->
                 supabaseClient.postgrest
-                    .from("workout_exercises")
+                    .from("workout_template_exercises")
                     .update(mapOf("order_index" to index)) {
                         filter { eq("id", workoutExerciseId) }
                     }
@@ -428,6 +670,7 @@ class WorkoutRepository @Inject constructor(
 
     /**
      * Get the total count of workouts for the current coach.
+     * Uses workout_templates table (V1 compatible).
      */
     suspend fun getWorkoutCount(): Result<Int> {
         return try {
@@ -435,11 +678,11 @@ class WorkoutRepository @Inject constructor(
                 ?: return Result.failure(Exception("Not authenticated"))
 
             val workouts = supabaseClient.postgrest
-                .from("workouts")
+                .from("workout_templates")
                 .select {
-                    filter { eq("coach_id", coachId) }
+                    filter { eq("user_id", coachId) }
                 }
-                .decodeList<Workout>()
+                .decodeList<WorkoutTemplateDto>()
 
             Log.d(TAG, "Workout count for coach: ${workouts.size}")
             Result.success(workouts.size)
@@ -453,21 +696,22 @@ class WorkoutRepository @Inject constructor(
 
     /**
      * Reindex all exercises in a workout to be sequential (0-based).
+     * Uses workout_template_exercises table (V1 compatible).
      */
     private suspend fun reindexWorkoutExercises(workoutId: String) {
         try {
             val exercises = supabaseClient.postgrest
-                .from("workout_exercises")
+                .from("workout_template_exercises")
                 .select {
-                    filter { eq("workout_id", workoutId) }
+                    filter { eq("workout_template_id", workoutId) }
                     order("order_index", Order.ASCENDING)
                 }
-                .decodeList<WorkoutExercise>()
+                .decodeList<WorkoutTemplateExerciseDto>()
 
             exercises.forEachIndexed { index, exercise ->
                 if (exercise.orderIndex != index) {
                     supabaseClient.postgrest
-                        .from("workout_exercises")
+                        .from("workout_template_exercises")
                         .update(mapOf("order_index" to index)) {
                             filter { eq("id", exercise.id) }
                         }
@@ -480,11 +724,12 @@ class WorkoutRepository @Inject constructor(
 
     /**
      * Update the workout's updated_at timestamp.
+     * Uses workout_templates table (V1 compatible).
      */
     private suspend fun updateWorkoutTimestamp(workoutId: String) {
         try {
             supabaseClient.postgrest
-                .from("workouts")
+                .from("workout_templates")
                 .update(mapOf("updated_at" to java.time.Instant.now().toString())) {
                     filter { eq("id", workoutId) }
                 }

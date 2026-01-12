@@ -6,28 +6,30 @@
     android:viewportHeight="108">
 
     <!-- Prometheus Flame Logo - centered in adaptive icon safe zone -->
-    <!-- Large flame curve (left) -->
+    <!-- Based on the official Prometheus flame logo -->
+
+    <!-- Large flame curve (left) - S-shaped swoosh -->
     <path
-        android:fillColor="#F58220"
-        android:pathData="M44,82
-            C38,78 34,70 34,62
-            C34,52 40,42 48,34
-            C52,30 54,26 54,22
-            C54,26 58,32 58,38
-            C58,44 54,50 50,56
-            C46,62 44,68 44,74
-            C44,77 44,80 44,82
+        android:fillColor="#F47920"
+        android:pathData="M42,84
+            C36,80 32,72 32,64
+            C32,52 38,42 46,32
+            C52,24 56,18 56,12
+            C56,12 58,18 58,26
+            C58,34 54,42 48,52
+            C42,62 40,70 42,78
+            C42.5,80 42,82 42,84
             Z" />
 
-    <!-- Small flame (right) -->
+    <!-- Small flame droplet (right) -->
     <path
-        android:fillColor="#F58220"
-        android:pathData="M62,82
-            C58,80 56,76 56,72
-            C56,66 60,60 66,56
-            C70,53 72,50 72,46
-            C72,50 74,54 74,58
-            C74,64 70,70 66,74
-            C64,76 62,79 62,82
+        android:fillColor="#F47920"
+        android:pathData="M60,84
+            C56,82 52,76 52,70
+            C52,62 58,54 66,48
+            C72,44 76,38 76,32
+            C76,32 78,38 78,46
+            C78,54 72,64 64,72
+            C60,76 58,80 60,84
             Z" />
 </vector>

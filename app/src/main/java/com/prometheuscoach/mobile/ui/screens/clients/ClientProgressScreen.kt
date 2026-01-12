@@ -22,12 +22,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import coil.compose.AsyncImage
 import com.prometheuscoach.mobile.data.model.PersonalBest
 import com.prometheuscoach.mobile.data.model.ProgressSummary
 import com.prometheuscoach.mobile.data.model.WeeklyProgress
 import com.prometheuscoach.mobile.data.model.WorkoutLog
-import com.prometheuscoach.mobile.ui.theme.PrometheusOrange
+import com.prometheuscoach.mobile.ui.components.GlowAvatar
+import com.prometheuscoach.mobile.ui.components.GlowAvatarMedium
+import com.prometheuscoach.mobile.ui.components.GradientBackground
+import com.prometheuscoach.mobile.ui.theme.*
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -45,19 +47,21 @@ fun ClientProgressScreen(
         viewModel.loadClientProgress(clientId)
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Progress", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+    GradientBackground {
+        Scaffold(
+            containerColor = Color.Transparent,
+            topBar = {
+                TopAppBar(
+                    title = { Text("Progress", fontWeight = FontWeight.Bold, color = Color.White) },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent
+                    )
                 )
-            )
         }
     ) { paddingValues ->
         when {
@@ -175,6 +179,7 @@ fun ClientProgressScreen(
                 }
             }
         }
+        }
     }
 }
 
@@ -188,31 +193,11 @@ private fun ClientProgressHeader(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Avatar
-        if (clientAvatar != null) {
-            AsyncImage(
-                model = clientAvatar,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-            )
-        } else {
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(PrometheusOrange.copy(alpha = 0.2f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = clientName.firstOrNull()?.uppercase() ?: "?",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = PrometheusOrange
-                )
-            }
-        }
+        // Avatar with glow ring
+        GlowAvatarMedium(
+            avatarUrl = clientAvatar,
+            name = clientName
+        )
 
         Spacer(modifier = Modifier.width(16.dp))
 
@@ -584,7 +569,7 @@ private fun WorkoutLogCard(workout: WorkoutLog) {
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = workout.routineName ?: "Workout",
+                    text = workout.workoutName ?: "Workout",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium
                 )

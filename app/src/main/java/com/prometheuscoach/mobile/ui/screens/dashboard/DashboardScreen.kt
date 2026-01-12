@@ -26,7 +26,13 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.prometheuscoach.mobile.data.model.Client
+import com.prometheuscoach.mobile.ui.components.GlowAvatar
+import com.prometheuscoach.mobile.ui.components.GradientBackground
+import com.prometheuscoach.mobile.ui.theme.DarkSurface
 import com.prometheuscoach.mobile.ui.theme.PrometheusOrange
+import com.prometheuscoach.mobile.ui.theme.RadiusMedium
+import com.prometheuscoach.mobile.ui.theme.TextPrimary
+import com.prometheuscoach.mobile.ui.theme.TextSecondary
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,31 +56,38 @@ fun DashboardScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("🔥", style = MaterialTheme.typography.headlineSmall)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            "Dashboard",
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(onClick = onNavigateToSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
+    GradientBackground {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Dashboard,
+                                contentDescription = null,
+                                tint = PrometheusOrange,
+                                modifier = Modifier.size(28.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Dashboard",
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = onNavigateToSettings) {
+                            Icon(Icons.Default.Settings, contentDescription = "Settings")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent
+                    )
                 )
-            )
-        }
-        // Bottom bar is now handled by CoachBottomBar in MainScreen
-    ) { paddingValues ->
+            },
+            containerColor = Color.Transparent
+            // Bottom bar is now handled by CoachBottomBar in MainScreen
+        ) { paddingValues ->
         PullToRefreshBox(
             isRefreshing = isRefreshing,
             onRefresh = {
@@ -226,6 +239,7 @@ fun DashboardScreen(
                 item { Spacer(modifier = Modifier.height(16.dp)) }
             }
         }
+        }
     }
 }
 
@@ -239,9 +253,9 @@ private fun StatCard(
 ) {
     Card(
         modifier = modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(RadiusMedium),
         colors = CardDefaults.cardColors(
-            containerColor = Color.Black
+            containerColor = DarkSurface
         ),
         border = BorderStroke(1.dp, PrometheusOrange)
     ) {
@@ -260,12 +274,12 @@ private fun StatCard(
                 value,
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = TextPrimary
             )
             Text(
                 title,
                 style = MaterialTheme.typography.bodySmall,
-                color = Color.White.copy(alpha = 0.7f)
+                color = TextSecondary
             )
         }
     }
@@ -302,9 +316,9 @@ private fun ClientListItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(RadiusMedium),
         colors = CardDefaults.cardColors(
-            containerColor = Color.Black
+            containerColor = DarkSurface
         ),
         border = BorderStroke(1.dp, PrometheusOrange)
     ) {
@@ -314,31 +328,12 @@ private fun ClientListItem(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Avatar
-            if (client.avatarUrl != null) {
-                AsyncImage(
-                    model = client.avatarUrl,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(PrometheusOrange.copy(alpha = 0.2f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = client.fullName.firstOrNull()?.uppercase() ?: "?",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = PrometheusOrange
-                    )
-                }
-            }
+            // Avatar with glow ring
+            GlowAvatar(
+                avatarUrl = client.avatarUrl,
+                name = client.fullName,
+                size = 48.dp
+            )
 
             Spacer(modifier = Modifier.width(12.dp))
 
@@ -347,12 +342,12 @@ private fun ClientListItem(
                     client.fullName,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Medium,
-                    color = Color.White
+                    color = TextPrimary
                 )
                 Text(
                     "Client",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.7f)
+                    color = TextSecondary
                 )
             }
 

@@ -203,6 +203,7 @@ data class WorkoutWithExercises(
 
 /**
  * UI model for an exercise within a workout.
+ * Includes full set details from exercise_sets table (V1 compatible).
  */
 data class WorkoutExerciseDetail(
     val workoutExerciseId: String,
@@ -216,13 +217,25 @@ data class WorkoutExerciseDetail(
     val exerciseThumbnailUrl: String?,
     val exerciseVideoUrl: String?,
     val primaryMuscles: String?,
-    val secondaryMuscles: String?
+    val secondaryMuscles: String?,
+    /** Full set details from exercise_sets table (V1 compatible) */
+    val exerciseSets: List<ExerciseSetInfo> = emptyList()
 ) {
     /**
      * Format reps display.
      */
     val repsDisplay: String
-        get() = targetReps?.toString() ?: "-"
+        get() = targetReps?.toString() ?: exerciseSets.firstOrNull()?.targetReps?.toString() ?: "-"
+
+    /**
+     * Get total volume (sets * reps).
+     */
+    val totalReps: Int
+        get() = if (exerciseSets.isNotEmpty()) {
+            exerciseSets.sumOf { it.targetReps }
+        } else {
+            sets * (targetReps ?: 0)
+        }
 }
 
 /**

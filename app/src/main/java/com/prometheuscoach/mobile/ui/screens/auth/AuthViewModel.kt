@@ -125,4 +125,8 @@ class AuthViewModel @Inject constructor(
             authRepository.handleAuthCallback(uri)
         }
     }
+
+    fun getCurrentUserId(): String? {
+        return authRepository.getCurrentUserId()
+    }
 }

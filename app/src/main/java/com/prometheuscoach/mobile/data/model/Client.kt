@@ -26,8 +26,8 @@ data class CoachClientConnection(
     val id: String,
     @SerialName("coach_id")
     val coachId: String,
-    @SerialName("client_id")
-    val clientId: String,
+    @SerialName("user_id")
+    val userId: String,
     val status: String,
     @SerialName("chat_enabled")
     val chatEnabled: Boolean? = null,
@@ -56,8 +56,8 @@ data class ClientWithConnection(
  * This is the single source of truth for coach-client relationships.
  *
  * View columns:
- * connection_id, coach_id, client_id, status, requested_at, responded_at,
- * created_at, updated_at, client_name, client_avatar, client_email
+ * connection_id, coach_id, user_id, status, requested_at, responded_at,
+ * created_at, updated_at, user_name, user_avatar
  *
  * @see Prometheus Developer Guidelines v1.0.0
  */
@@ -67,8 +67,8 @@ data class CoachClientView(
     val connectionId: String,
     @SerialName("coach_id")
     val coachId: String,
-    @SerialName("client_id")
-    val clientId: String,
+    @SerialName("user_id")
+    val clientId: String,  // Keep property name for backwards compat, but maps to user_id
     val status: String,  // 'pending', 'accepted', 'declined'
     @SerialName("requested_at")
     val requestedAt: String? = null,
@@ -78,12 +78,10 @@ data class CoachClientView(
     val createdAt: String? = null,
     @SerialName("updated_at")
     val updatedAt: String? = null,
-    @SerialName("client_name")
-    val clientName: String,
-    @SerialName("client_avatar")
-    val clientAvatar: String? = null,
-    @SerialName("client_email")
-    val clientEmail: String? = null
+    @SerialName("user_name")
+    val clientName: String,  // Keep property name for backwards compat, but maps to user_name
+    @SerialName("user_avatar")
+    val clientAvatar: String? = null  // Keep property name for backwards compat, but maps to user_avatar
 )
 
 /**
@@ -110,4 +108,16 @@ data class CoachProfile(
     @SerialName("invite_code")
     val inviteCode: String? = null,
     val role: String? = null
+)
+
+/**
+ * Request model for updating client profile data.
+ * Only non-null fields will be updated.
+ */
+@Serializable
+data class UpdateClientRequest(
+    @SerialName("full_name")
+    val fullName: String? = null,
+    @SerialName("preferred_timezone")
+    val preferredTimezone: String? = null
 )

@@ -10,7 +10,13 @@ sealed interface NavRoute {
     data object EmailVerified : NavRoute
 
     @Serializable
+    data object SubscriptionGate : NavRoute
+
+    @Serializable
     data object Dashboard : NavRoute
+
+    @Serializable
+    data object CoachDashboard : NavRoute
 
     @Serializable
     data object Community : NavRoute
@@ -37,6 +43,12 @@ sealed interface NavRoute {
     data class ClientNutrition(val clientId: String, val clientName: String) : NavRoute
 
     @Serializable
+    data class ClientVBT(val clientId: String, val clientName: String) : NavRoute
+
+    @Serializable
+    data class ClientFormAnalysis(val clientId: String, val clientName: String) : NavRoute
+
+    @Serializable
     data object Calendar : NavRoute
 
     @Serializable
@@ -55,10 +67,22 @@ sealed interface NavRoute {
     data class WorkoutDetail(val workoutId: String) : NavRoute
 
     @Serializable
+    data class TemplateDetail(val templateId: String) : NavRoute
+
+    @Serializable
     data class ExerciseDetail(val exerciseId: String) : NavRoute
 
     @Serializable
     data object Settings : NavRoute
+
+    @Serializable
+    data object Account : NavRoute
+
+    @Serializable
+    data object EditCoachProfile : NavRoute
+
+    @Serializable
+    data class CoachSetCard(val coachId: String) : NavRoute
 
     @Serializable
     data object Trends : NavRoute
@@ -68,4 +92,26 @@ sealed interface NavRoute {
 
     @Serializable
     data class ProgramDetail(val programId: String) : NavRoute
+
+    @Serializable
+    data object AIAssistant : NavRoute
+
+    @Serializable
+    data class AIAssistantWithContext(
+        val contextType: String,
+        val contextId: String? = null,
+        val contextName: String? = null
+    ) : NavRoute
+
+    @Serializable
+    data object GamificationDashboard : NavRoute
+
+    @Serializable
+    data class ClientGamification(val clientId: String, val clientName: String) : NavRoute
+
+    @Serializable
+    data object Challenges : NavRoute
+
+    @Serializable
+    data class ChallengeDetail(val challengeId: String) : NavRoute
 }

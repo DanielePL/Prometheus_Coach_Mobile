@@ -2,34 +2,83 @@ package com.prometheuscoach.mobile.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Prometheus Brand Colors - matching the Client Mobile App
-val PrometheusOrange = Color(0xFFE67E22)          // Sattes Orange (Primary)
-val PrometheusOrangeLight = Color(0xFFF39C12)     // Heller für Hover/Active States
-val PrometheusOrangeDark = Color(0xFFD35400)      // Dunkler für Kontrast/Pressed States
-val PrometheusOrangeGlow = Color(0xFFE67E22)      // Gleich wie Primary für konsistenten Glow
+// ═══════════════════════════════════════════════════════════════════════════
+// PROMETHEUS BRAND COLORS
+// Based on Prometheus Branding & Design System v1.0
+// ═══════════════════════════════════════════════════════════════════════════
 
-// Dark Theme Colors - matching Client Mobile App
-val DarkBackground = Color(0xFF1A1512)            // Warmer dunkler Hintergrund
-val DarkBackgroundSecondary = Color(0xFF141414)   // Sekundärer Hintergrund
-val DarkSurface = Color(0xFF1E1A17)               // Leicht wärmer als Background
-val DarkSurfaceVariant = Color(0xFF2A2623)        // Warme Surface Variante
-val DarkOnBackground = Color(0xFFE5E5E5)
-val DarkOnSurface = Color(0xFFE5E5E5)
+// Primary Brand Colors
+val PrometheusOrange = Color(0xFFE67E22)          // Primary brand color, CTAs, highlights
+val PrometheusOrangeLight = Color(0xFFF39C12)     // Hover/Active states
+val PrometheusOrangeDark = Color(0xFFD35400)      // Pressed states, contrast
+val PrometheusOrangeGlow = Color(0xFFE67E22)      // Glow effects
 
-// Light Theme Colors
-val LightBackground = Color(0xFFFAFAFA)
-val LightSurface = Color(0xFFFFFFFF)
-val LightSurfaceVariant = Color(0xFFF5F5F5)
-val LightOnBackground = Color(0xFF1A1A1A)
+// ═══════════════════════════════════════════════════════════════════════════
+// DARK MODE COLORS
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Backgrounds & Surfaces
+val DarkBackground = Color(0xFF141414)            // Main app background
+val DarkBackgroundSecondary = Color(0xFF1A1512)   // With warm orange tint (gradient top)
+val DarkSurface = Color(0xFF1C1C1C)               // Cards, elevated surfaces
+val DarkSurfaceVariant = Color(0xFF262626)        // Secondary surfaces
+val DarkOnBackground = Color(0xFFFAFAFA)          // Primary text
+val DarkOnSurface = Color(0xFFFAFAFA)
+
+// Text Colors (Dark Mode)
+val TextPrimary = Color(0xFFFAFAFA)               // Primary text, headings
+val TextSecondary = Color(0xFF999999)             // Secondary text, labels
+val TextTertiary = Color(0xFF666666)              // Muted text, placeholders
+val TextUnselected = Color(0xFF666666)            // Inactive states
+
+// Glass Effects (Dark Mode)
+val GlassBase = Color(0xFF333333)                 // Glass background
+val GlassBorder = Color(0xFFFFFFFF)               // Glass borders (use with 10% alpha)
+val GlassHover = Color(0xFF404040)                // Hover states
+
+// Border Colors
+val DarkBorder = Color(0xFF333333)
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LIGHT MODE COLORS
+// ═══════════════════════════════════════════════════════════════════════════
+
+val LightBackground = Color(0xFFFAFAFA)           // Main app background
+val LightSurface = Color(0xFFFFFFFF)              // Cards, elevated surfaces
+val LightSurfaceVariant = Color(0xFFF5F5F5)       // Secondary surfaces
+val LightOnBackground = Color(0xFF1A1A1A)         // Primary text
 val LightOnSurface = Color(0xFF1A1A1A)
 
-// Status Colors
-val SuccessGreen = Color(0xFF22C55E)
-val WarningYellow = Color(0xFFFACC15)
-val ErrorRed = Color(0xFFEF4444)
-val InfoBlue = Color(0xFF3B82F6)
+// Text Colors (Light Mode)
+val LightTextSecondary = Color(0xFF4A4A4A)        // Secondary text
+val LightTextGray = Color(0xFF666666)             // Muted text
+val LightTextUnselected = Color(0xFFBBBBBB)       // Inactive states
 
-// Gray Scale
+// Border Colors
+val LightBorder = Color(0xFFE0E0E0)
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SEMANTIC COLORS
+// ═══════════════════════════════════════════════════════════════════════════
+
+val SuccessGreen = Color(0xFF4CAF50)              // Positive feedback, completed
+val ErrorRed = Color(0xFFE53935)                  // Errors, warnings
+val WarningYellow = Color(0xFFFFC107)             // Caution states
+val InfoBlue = Color(0xFF2196F3)                  // Informational
+
+// ═══════════════════════════════════════════════════════════════════════════
+// NUTRITION MACRO COLORS
+// ═══════════════════════════════════════════════════════════════════════════
+
+val CaloriesOrange = Color(0xFFF97316)
+val ProteinBlue = Color(0xFF3B82F6)
+val CarbsGreen = Color(0xFF10B981)
+val FatYellow = Color(0xFFFBBF24)
+
+// ═══════════════════════════════════════════════════════════════════════════
+// GRAY SCALE
+// ═══════════════════════════════════════════════════════════════════════════
+
 val Gray50 = Color(0xFFFAFAFA)
 val Gray100 = Color(0xFFF5F5F5)
 val Gray200 = Color(0xFFE5E5E5)

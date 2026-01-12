@@ -6,6 +6,7 @@ import android.content.Context
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -35,9 +36,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.util.Log
 import androidx.hilt.navigation.compose.hiltViewModel
-import coil.compose.AsyncImage
+import coil.compose.AsyncImagePainter
+import coil.compose.SubcomposeAsyncImage
+import coil.compose.SubcomposeAsyncImageContent
 import com.prometheuscoach.mobile.data.model.Client
+import com.prometheuscoach.mobile.ui.components.GlowAvatarMedium
+import com.prometheuscoach.mobile.ui.components.GradientBackground
 import com.prometheuscoach.mobile.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -79,40 +85,35 @@ fun ClientsScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Clients", fontWeight = FontWeight.Bold, color = Color.White) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
-                    }
-                },
-                actions = {
-                    IconButton(onClick = {
-                        viewModel.loadCoachInviteCode()
-                        showAddClientSheet = true
-                    }) {
-                        Icon(Icons.Default.PersonAdd, contentDescription = "Add Client", tint = PrometheusOrange)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkSurface)
-            )
-        },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = Color.Transparent
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(DarkBackground, DarkBackgroundSecondary)
-                    )
+    GradientBackground {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Clients", fontWeight = FontWeight.Bold, color = Color.White) },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = {
+                            viewModel.loadCoachInviteCode()
+                            showAddClientSheet = true
+                        }) {
+                            Icon(Icons.Default.PersonAdd, contentDescription = "Add Client", tint = PrometheusOrange)
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
                 )
-                .padding(paddingValues)
-        ) {
-            Column(modifier = Modifier.fillMaxSize()) {
+            },
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            containerColor = Color.Transparent
+        ) { paddingValues ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
                 // Search Bar
                 OutlinedTextField(
                     value = searchQuery,
@@ -254,16 +255,27 @@ fun ClientsScreen(
 
     // Add Client Bottom Sheet
     if (showAddClientSheet) {
+        val context = LocalContext.current
         AddClientBottomSheet(
             inviteCode = clientsState.coachInviteCode,
             isInviting = clientsState.isInviting,
             inviteError = clientsState.inviteError,
+            clientLimitInfo = clientsState.clientLimitInfo,
+            isAtClientLimit = clientsState.isAtClientLimit,
             onDismiss = {
                 showAddClientSheet = false
                 viewModel.clearInviteState()
             },
             onInviteByEmail = { email ->
                 viewModel.inviteClientByEmail(email)
+            },
+            onUpgradePlan = {
+                // Open web tool pricing page
+                val intent = android.content.Intent(
+                    android.content.Intent.ACTION_VIEW,
+                    android.net.Uri.parse("https://coach.prometheusapp.io/pricing")
+                )
+                context.startActivity(intent)
             }
         )
     }
@@ -274,15 +286,14 @@ private fun ClientCard(
     client: Client,
     onClick: () -> Unit
 ) {
-    Card(
+    Log.d("ClientCard", "Client ${client.fullName} avatarUrl: ${client.avatarUrl}")
+
+    // Glass card style - Prometheus premium
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color.Black
-        ),
-        border = BorderStroke(1.dp, PrometheusOrange)
+            .glassPremium(cornerRadius = RadiusMedium)
+            .clickable(onClick = onClick)
     ) {
         Row(
             modifier = Modifier
@@ -290,31 +301,11 @@ private fun ClientCard(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Avatar
-            if (client.avatarUrl != null) {
-                AsyncImage(
-                    model = client.avatarUrl,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(56.dp)
-                        .clip(CircleShape)
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .size(56.dp)
-                        .clip(CircleShape)
-                        .background(PrometheusOrange.copy(alpha = 0.2f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = client.fullName.firstOrNull()?.uppercase() ?: "?",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = PrometheusOrange
-                    )
-                }
-            }
+            // Avatar with glow ring
+            GlowAvatarMedium(
+                avatarUrl = client.avatarUrl,
+                name = client.fullName
+            )
 
             Spacer(modifier = Modifier.width(16.dp))
 
@@ -323,13 +314,13 @@ private fun ClientCard(
                     client.fullName,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium,
-                    color = Color.White
+                    color = TextPrimary
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     "Client",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.7f)
+                    color = TextSecondary
                 )
             }
 
@@ -352,8 +343,11 @@ private fun AddClientBottomSheet(
     inviteCode: String?,
     isInviting: Boolean,
     inviteError: String?,
+    clientLimitInfo: com.prometheuscoach.mobile.data.repository.ClientLimitInfo?,
+    isAtClientLimit: Boolean,
     onDismiss: () -> Unit,
-    onInviteByEmail: (String) -> Unit
+    onInviteByEmail: (String) -> Unit,
+    onUpgradePlan: () -> Unit
 ) {
     var email by remember { mutableStateOf("") }
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -399,6 +393,65 @@ private fun AddClientBottomSheet(
                         fontSize = 14.sp
                     )
                 }
+            }
+
+            // Client Limit Info
+            if (clientLimitInfo != null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (isAtClientLimit) ErrorRed.copy(alpha = 0.15f)
+                                        else PrometheusOrange.copy(alpha = 0.1f)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                if (isAtClientLimit) Icons.Default.Warning else Icons.Default.People,
+                                contentDescription = null,
+                                tint = if (isAtClientLimit) ErrorRed else PrometheusOrange,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    "${clientLimitInfo.currentCount} / ${clientLimitInfo.limit} Clients",
+                                    color = if (isAtClientLimit) ErrorRed else Color.White,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 14.sp
+                                )
+                                if (isAtClientLimit) {
+                                    Text(
+                                        "Limit reached",
+                                        color = ErrorRed.copy(alpha = 0.8f),
+                                        fontSize = 12.sp
+                                    )
+                                } else {
+                                    Text(
+                                        "${clientLimitInfo.remaining} slots available",
+                                        color = Gray400,
+                                        fontSize = 12.sp
+                                    )
+                                }
+                            }
+                        }
+                        if (isAtClientLimit) {
+                            TextButton(
+                                onClick = onUpgradePlan
+                            ) {
+                                Text("Upgrade", color = PrometheusOrange, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
             }
 
             // Tab Row
